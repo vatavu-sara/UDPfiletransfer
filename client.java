@@ -4,6 +4,9 @@ import java.net.*;
 import java.io.*;
 
 public class client {
+
+	void getPacket()
+	{}
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
 		InetAddress serverName = InetAddress.getLocalHost();
@@ -11,38 +14,88 @@ public class client {
 		String filename = args[1]; // name of file wanted
 		String newfilepath = args[2]; // path of new file
 		int packets = 0; // nr of packets received
+		int received;
 		System.out.println("Hello there client!");
 
 		FileOutputStream FOS = new FileOutputStream(newfilepath);
 		DatagramSocket client = new DatagramSocket();
-		DatagramPacket packet = null;
+		DatagramPacket packetdata = null;
+		DatagramPacket nos=null;
 
 		// send which file wanted to server
-		byte[] buffer = new byte[256];
+		byte[] buffer = new byte[512];
 		buffer = filename.getBytes();
-		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
-		client.send(packet);
+		nos = new DatagramPacket(buffer, buffer.length, serverName, port);
+		client.send(nos);
 
 		// receive no of packets needed
-		packet = new DatagramPacket(buffer, buffer.length);
-		client.receive(packet);
-		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+		nos = new DatagramPacket(buffer, buffer.length);
+		client.receive(nos);
+		int packetsNeeded = Integer.parseInt(new String(nos.getData(), 0, nos.getLength()));
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 		while (true) {
-			try {// receiving file packets
-				byte[] data = new byte[256];
+			try {
+				// receiving file packets
+				byte[] data = new byte[512];
+				byte[] buffer2 = new byte[512];
+				
 
 				// receive lenght of new packet
-				packet = new DatagramPacket(buffer, buffer.length);
-				client.receive(packet);
-				int length = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-			
+				packetdata = new DatagramPacket(buffer2, buffer2.length);
+				client.receive(packetdata);
+				int length = Integer.parseInt(new String(packetdata.getData(),0,packetdata.getLength()));
+
 				//receive packet		
-				packet = new DatagramPacket(data, length);
-				client.receive(packet);
-				FOS.write(packet.getData());
-				System.out.println("Packet no. " + ++packets + " received!Length: "+length + "\nContained: " + new String(packet.getData()));
+				packetdata = new DatagramPacket(data, length);
+				client.receive(packetdata);
+
+				//receive number of packet 
+				nos = new DatagramPacket(buffer, buffer.length);
+				client.receive(nos);
+				received = Integer.parseInt(new String(nos.getData(), 0, nos.getLength()));
+				
+
+				//send acknowledge of packet 
+				buffer2= Integer.toString(received).getBytes();
+				nos=new DatagramPacket(buffer2, buffer2.length,serverName,port);
+				client.send(nos);
+
+				//receive ok/notok
+				nos = new DatagramPacket(buffer2, buffer2.length);
+				client.receive(nos);
+
+				while(received!=packets){
+				// receive lenght of new packet
+				packetdata = new DatagramPacket(buffer2, buffer2.length);
+				client.receive(packetdata);
+				length = Integer.parseInt(new String(packetdata.getData(),0,packetdata.getLength()));
+
+				//receive packet		
+				packetdata = new DatagramPacket(data, length);
+				client.receive(packetdata);
+
+				//receive number of packet 
+				nos = new DatagramPacket(buffer2, buffer2.length);
+				client.receive(nos);
+				received = Integer.parseInt(new String(nos.getData(), 0, nos.getLength()));
+
+				//send acknowledge of packet 
+				buffer2= Integer.toString(received).getBytes();
+				nos=new DatagramPacket(buffer2, buffer2.length,serverName,port);
+				client.send(nos);
+
+				//receive ok/notok
+				nos = new DatagramPacket(buffer2, buffer2.length);
+				client.receive(nos);
+	
+
+				}
+				System.out.println("Packet no. " + ++packets + " received!Length: "+length + "\nContained: " + new String(packetdata.getData()));
+
+
+				FOS.write(data,0,length);
+				FOS.flush();
 
 				if (packets == packetsNeeded) {
 					client.close();
