@@ -13,7 +13,7 @@ public class client {
 		int port = Integer.parseInt(args[0]);
 		String filename = args[1]; // name of file wanted
 		String newfilepath = args[2]; // path of new file
-		int packets = 0; // nr of packets received
+		int packets = 1; // nr of packets received
 		int received;
 		System.out.println("Hello there client!");
 
@@ -51,7 +51,7 @@ public class client {
 				client.receive(packetdata);
 
 				//receive number of packet 
-				nos = new DatagramPacket(buffer, buffer.length);
+				nos = new DatagramPacket(buffer2, buffer2.length);
 				client.receive(nos);
 				received = Integer.parseInt(new String(nos.getData(), 0, nos.getLength()));
 				
@@ -60,12 +60,15 @@ public class client {
 				buffer2= Integer.toString(received).getBytes();
 				nos=new DatagramPacket(buffer2, buffer2.length,serverName,port);
 				client.send(nos);
+				
 
 				//receive ok/notok
-				nos = new DatagramPacket(buffer2, buffer2.length);
-				client.receive(nos);
+				// nos = new DatagramPacket(buffer, buffer.length);
+				// client.receive(nos);
 
 				while(received!=packets){
+				byte[] buffer3 = new byte[512];
+
 				// receive lenght of new packet
 				packetdata = new DatagramPacket(buffer2, buffer2.length);
 				client.receive(packetdata);
@@ -76,28 +79,28 @@ public class client {
 				client.receive(packetdata);
 
 				//receive number of packet 
-				nos = new DatagramPacket(buffer2, buffer2.length);
+				nos = new DatagramPacket(buffer3, buffer3.length);
 				client.receive(nos);
 				received = Integer.parseInt(new String(nos.getData(), 0, nos.getLength()));
 
 				//send acknowledge of packet 
-				buffer2= Integer.toString(received).getBytes();
-				nos=new DatagramPacket(buffer2, buffer2.length,serverName,port);
+				buffer3= Integer.toString(received).getBytes();
+				nos=new DatagramPacket(buffer3, buffer3.length,serverName,port);
 				client.send(nos);
 
 				//receive ok/notok
-				nos = new DatagramPacket(buffer2, buffer2.length);
-				client.receive(nos);
+				// nos = new DatagramPacket(buffer2, buffer2.length);
+				// client.receive(nos);
 	
 
 				}
-				System.out.println("Packet no. " + ++packets + " received!Length: "+length + "\nContained: " + new String(packetdata.getData()));
+				System.out.println("Packet no. " + packets++ + " received!Length: "+length + "\nContained: " + new String(packetdata.getData()));
 
 
 				FOS.write(data,0,length);
 				FOS.flush();
 
-				if (packets == packetsNeeded) {
+				if (packets > packetsNeeded) {
 					client.close();
 					FOS.close();
 					System.out.println("Done. Socket closed");
