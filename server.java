@@ -11,7 +11,7 @@ public class server {
       int packets = 1; // no of packets
       int sent, received;
       System.out.println("Server started!");
-      byte[] buffer = new byte[512];
+      byte[] buffer = new byte[100];
       // receiving file name
       packet = new DatagramPacket(buffer, buffer.length);
       server.receive(packet);
@@ -21,7 +21,9 @@ public class server {
 
       // making file input stream(to read from it)
       FileInputStream fis = new FileInputStream(new File(fileName));
-      int packetsNeeded = fis.available() / 512 + 1; // nr of packets needed
+
+      //max 65507 ?
+      int packetsNeeded = fis.available() / 65507 + 1; // nr of packets needed
 
       // send nr of packets needed
       buffer = Integer.toString(packetsNeeded).getBytes();
@@ -31,16 +33,16 @@ public class server {
       server.send(packet);
 
       while (true) {
-         try { // sending data in packets of 512
-            byte data[] = new byte[512];
-            byte buffer2[] = new byte[512];
+         try { // sending data in packets of 65507
+            byte data[] = new byte[65507];
+            byte buffer2[] = new byte[10];
 
             int i = 0;
-            while (i < 512 && fis.available() != 0) {
+            while (i < 65507 && fis.available() != 0) {
                data[i] = (byte) fis.read();
                i++;
             }
-            if (i != 512)
+            if (i != 65507)
                i--;
 
             // fis.read(data);
@@ -53,30 +55,17 @@ public class server {
             packet = new DatagramPacket(data, i, address, rep_port);
             server.send(packet);
 
-            // sending number of packet
-            sent = packets;
-            buffer2 = Integer.toString(sent).getBytes();
-            packet = new DatagramPacket(buffer2, buffer2.length, address, rep_port);
-            server.send(packet);
-
-            // receive ack of packet
+            // receive status of packet (1 received 0 failed)
             packet = new DatagramPacket(buffer2, buffer2.length);
             server.receive(packet);
             received = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
-            System.out.println("Sent: "+sent+" Rec: "+received);
-
-            while (sent != received) {
-            byte[] buffer3 = new byte[512];
-
-               // send notOK message
-               // buffer = "notOK".getBytes();
-               // packet = new DatagramPacket(buffer, buffer.length, address, rep_port);
-               // server.send(packet);
+            while (received==0) {
+            byte[] buffer3 = new byte[10];
 
                // sending the packet length
-               buffer = Integer.toString(i).getBytes();
-               packet = new DatagramPacket(buffer, buffer.length, address, rep_port);
+               buffer3 = Integer.toString(i).getBytes();
+               packet = new DatagramPacket(buffer3, buffer3.length, address, rep_port);
                server.send(packet);
 
                // sending the packet itself
@@ -84,24 +73,14 @@ public class server {
                packet = new DatagramPacket(data, i, address, rep_port);
                server.send(packet);
 
-               // sending number of packet
-               sent = packets;
-               buffer3 = Integer.toString(sent).getBytes();
-               packet = new DatagramPacket(buffer3, buffer3.length, address, rep_port);
-               server.send(packet);
-
-               // receive ack of packet
-               packet = new DatagramPacket(buffer3, buffer3.length);
+               // receive status of packet
+               packet = new DatagramPacket(buffer2, buffer2.length);
                server.receive(packet);
                received = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
             }
 
-            // send ok message
-            // buffer = "OK".getBytes();
-            // packet = new DatagramPacket(buffer, buffer.length, address, rep_port);
-            // server.send(packet);
-            //packets++;
-            System.out.println("Packet no. " + packets++ + " sent!Length:" + i + "\nContained:" + new String(data));
+            packets++;
+            //System.out.println("Packet no. " + packets++ + " sent!Length:" + i );
 
 
             if (packets > packetsNeeded) {
