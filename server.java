@@ -7,10 +7,15 @@ public class server {
    public static void main(String[] args) throws IOException {
       int rcv_port = Integer.parseInt(args[0]);
       DatagramSocket server = new DatagramSocket(rcv_port);
+      System.out.println("Server started!");
+      
+
+      while(true){
       DatagramPacket packet = null;
       int packets = 1; // no of packets
+      long bytesSend=0;
+      int packetsSent=0;
       int sent, received;
-      System.out.println("Server started!");
       byte[] buffer = new byte[100];
       // receiving file name
       packet = new DatagramPacket(buffer, buffer.length);
@@ -60,6 +65,8 @@ public class server {
             server.receive(packet);
             received = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
+            packetsSent++;
+            bytesSend+=i;
             while (received==0) {
             byte[] buffer3 = new byte[10];
 
@@ -77,6 +84,9 @@ public class server {
                packet = new DatagramPacket(buffer2, buffer2.length);
                server.receive(packet);
                received = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+               packetsSent++;
+
+               bytesSend+=i;
             }
 
             packets++;
@@ -84,8 +94,18 @@ public class server {
 
 
             if (packets > packetsNeeded) {
-               server.close();
-               System.out.println("Connection closed");
+               //sending total bytes sent
+               buffer=Long.toString(bytesSend).getBytes();
+               packet=new DatagramPacket(buffer, buffer.length,address,rep_port);
+               server.send(packet);
+
+               //sending total packets sent
+               buffer=Integer.toString(packetsSent).getBytes();
+               packet=new DatagramPacket(buffer, buffer.length,address,rep_port);
+               server.send(packet);
+               System.out.println("Client received the file " +fileName);
+               // server.close();
+               // System.out.println("Connection closed");
                break;
             }
 
@@ -96,7 +116,8 @@ public class server {
             e.printStackTrace();
             break;
          }
-      }
+      } 
+   }
 
    }
 }

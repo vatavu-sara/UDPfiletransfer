@@ -20,22 +20,28 @@ public class client {
 		String newfilepath = args[2]; // path of new file
 		int probFail = Integer.parseInt(args[3]); //probability % of simulating fail
 		int packets = 1; // nr of packets received
-		System.out.println("Hello there client!");
+		int packetsSent;
+		int bytesReceived=0;
+		
 
 		FileOutputStream FOS = new FileOutputStream(newfilepath);
 		DatagramSocket client = new DatagramSocket();
 		DatagramPacket packet;
 
+		
 		// send which file wanted to server
 		byte[] buffer = new byte[100];
 		buffer = filename.getBytes();
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
 
+		
+
 		// receive no of packets needed
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+		System.out.println("Hello there client!");
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 		while (true) {
@@ -87,7 +93,7 @@ public class client {
 				buffer2= Integer.toString(1).getBytes();
                	packet = new DatagramPacket(buffer2, buffer2.length, serverName, port);
                	client.send(packet);
-
+				bytesReceived+=length;
 				packets++;
 				//System.out.println("Packet no. " + packets++ + " received!Length: "+length);
 
@@ -96,6 +102,17 @@ public class client {
 				FOS.flush();
 
 				if (packets > packetsNeeded) {
+			
+					packet=new DatagramPacket(buffer, buffer.length);
+					client.receive(packet);
+					Long bytesSent = Long.parseLong(new String(packet.getData(), 0, packet.getLength()));
+
+					packet=new DatagramPacket(buffer, buffer.length);
+					client.receive(packet);
+					packetsSent = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+
+					System.out.println("Bytes sent: "+bytesSent + "Bytes received: "+bytesReceived );
+					System.out.println("Packets sent: "+packetsSent +" Packets received: "+(packets-1) +" Retransmissions:" + (packetsSent-packets+1));
 					client.close();
 					FOS.close();
 					System.out.println("Done. Socket closed");
