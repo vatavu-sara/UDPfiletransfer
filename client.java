@@ -11,13 +11,14 @@ public class client {
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
 		if(args.length!=4) {
-			System.out.println("Arguments not valid!");
+			System.out.println("Arguments not valid!(Need 4)");
 			System.exit(0);
 		}
 		InetAddress serverName = InetAddress.getLocalHost();
 		int port = Integer.parseInt(args[0]);
-		String filename = args[1]; // name of file wanted
-		String newfilepath = args[2]; // path of new file
+		int noProcess= Integer.parseInt(args[1]);
+		String filename = args[2]; // name of file wanted
+		String newfilepath ="client"+noProcess+"/"+filename; // path of new file
 		int probFail = Integer.parseInt(args[3]); //probability % of simulating fail
 		int packets = 1; // nr of packets received
 		int packetsSent;
@@ -28,9 +29,20 @@ public class client {
 		DatagramSocket client = new DatagramSocket();
 		DatagramPacket packet;
 
+		// send number of process wanted to server
+		byte[] buffer = new byte[10];
+		buffer = Integer.toString(noProcess).getBytes();
+		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
+		client.send(packet);
+
+		//receive ack to start
+		packet = new DatagramPacket(buffer, buffer.length);
+		client.receive(packet);
+		System.out.println("Hello there client! All clients are now connected to the server");
+
 		
 		// send which file wanted to server
-		byte[] buffer = new byte[100];
+		buffer = new byte[100];
 		buffer = filename.getBytes();
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
@@ -41,7 +53,6 @@ public class client {
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-		System.out.println("Hello there client!");
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 		while (true) {
@@ -94,8 +105,8 @@ public class client {
                	packet = new DatagramPacket(buffer2, buffer2.length, serverName, port);
                	client.send(packet);
 				bytesReceived+=length;
-				packets++;
-				//System.out.println("Packet no. " + packets++ + " received!Length: "+length);
+				//packets++;
+				System.out.println("Packet no. " + packets++ + " received!Length: "+length);
 
 
 				FOS.write(data,0,length);
