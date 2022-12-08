@@ -6,8 +6,6 @@ import java.util.Random;
 
 public class client {
 
-	void getPacket()
-	{}
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
 		if(args.length!=4) {
