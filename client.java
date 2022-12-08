@@ -8,18 +8,19 @@ public class client {
 
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
-		if(args.length!=4) {
-			System.out.println("Arguments not valid!(Need 4)");
+		if(args.length!=3) {
+			System.out.println("Arguments not valid!(Need 3)");
 			System.exit(0);
 		}
 		InetAddress serverName = InetAddress.getLocalHost();
 		int port = Integer.parseInt(args[0]);
 		int noProcess= Integer.parseInt(args[1]);
-		String filename = args[2]; // name of file wanted
 		String dirName="client"+noProcess; //create directory client1..
 		new File(dirName).mkdir();
 
-		String newfilepath ="client"+noProcess+"/"+filename; // path of new file
+
+
+		String newfilepath ="client"+noProcess+" /received"; // path of new file
 		int probFail = Integer.parseInt(args[3]); //probability % of simulating fail
 		int packets = 1; // nr of packets received
 		int packetsSent;
@@ -42,11 +43,11 @@ public class client {
 		System.out.println("Hello there client! All clients are now connected to the server");
 
 		
-		// send which file wanted to server
-		buffer = new byte[100];
+		// send which file wanted to server = move to sv
+		/*buffer = new byte[100];
 		buffer = filename.getBytes();
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
-		client.send(packet);
+		client.send(packet);*/
 
 		
 

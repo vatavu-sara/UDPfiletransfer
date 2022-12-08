@@ -5,7 +5,7 @@ import java.io.*;
 
 public class server {
    public static void main(String[] args) throws IOException {
-      if(args.length!=2) {
+      if(args.length!=3) {
 			System.out.println("Arguments not valid!(Need 2)");
 			System.exit(0);
 		}
@@ -14,6 +14,7 @@ public class server {
       System.out.println("Server started!");
       DatagramPacket packet = null;
       int noc = Integer.parseInt(args[1]); // number of clients
+      String fileName = args[2];
       InetAddress addresses[] = new InetAddress[11];
       int cl_ports[] = new int[11];
 
@@ -46,7 +47,7 @@ public class server {
          }
 
          // receiving file name from the first*(not necessarily in order) process
-         buffer = new byte[100];
+         /*buffer = new byte[100];
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);
          String fileName = new String(packet.getData(), 0, packet.getLength());
@@ -62,7 +63,7 @@ public class server {
                server.close();
                System.exit(0);
             }
-         }
+         }*/
 
          System.out.println("Clients wants the file: " + fileName);
 
@@ -106,15 +107,15 @@ public class server {
                for (int i = 1; i <= noc; i++) {
                   byte buffer2[] = new byte[10];
                
-               //send packet length
-               buffer2 = Integer.toString(size).getBytes();
-               packetLength = new DatagramPacket(buffer2, buffer2.length,addresses[i],cl_ports[i]);
-               server.send(packetLength);
-               
+                  //send packet length
+                  buffer2 = Integer.toString(size).getBytes();
+                  packetLength = new DatagramPacket(buffer2, buffer2.length,addresses[i],cl_ports[i]);
+                  server.send(packetLength);
+                  
 
-               // sending the packet itself
-               packet = new DatagramPacket(data, size,addresses[i],cl_ports[i]);
-               server.send(packet);
+                  // sending the packet itself
+                  packet = new DatagramPacket(data, size,addresses[i],cl_ports[i]);
+                  server.send(packet);
                    // receive status of packet (1 received 0 failed)
                   status = new DatagramPacket(buffer2, buffer2.length);
                   server.receive(status);

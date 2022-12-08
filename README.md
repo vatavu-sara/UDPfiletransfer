@@ -4,8 +4,8 @@ Server to n(<=10) clients file transfer using UDP working kind of concurrently.
 
 Arguments:
 
-- server: `<portNumber> <numberOfClients>`
-- client: `<portNumber> <indexOfClient> <fileWanted> <chanceOfPacketLost(/100)>`
+- server: `<portNumber> <numberOfClients> <fileWanted>`
+- client: `<portNumber> <indexOfClient> <chanceOfPacketLost(/100)>`
 
 Features:
 * simulates packet loss and treats the case
