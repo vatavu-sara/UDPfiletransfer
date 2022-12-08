@@ -36,7 +36,7 @@ public class client {
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
 
-		//receive ack to start
+		//receive ack that all clients are connected
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		System.out.println("Hello there client! All clients are now connected to the server");
@@ -47,6 +47,8 @@ public class client {
 		buffer = filename.getBytes();
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
+
+		
 
 		
 

@@ -57,11 +57,11 @@ public class server {
             packet = new DatagramPacket(buffer, buffer.length);
             server.receive(packet);
             fn2 = new String(packet.getData(), 0, packet.getLength());
-            // if (fn2 != fileName) {
-            //    System.out.println("Clients want different files :(");
-            //    server.close();
-            //    System.exit(0);
-            // }
+            if (fn2.compareTo(fileName)!=0) {
+               System.out.println("Clients want different files :(");
+               server.close();
+               System.exit(0);
+            }
          }
 
          System.out.println("Clients wants the file: " + fileName);
@@ -101,6 +101,8 @@ public class server {
                // fis.read(data);
                // packet length
 
+
+               //FROM HERE IN THREAD
                for (int i = 1; i <= noc; i++) {
                   byte buffer2[] = new byte[10];
                
@@ -160,7 +162,10 @@ public class server {
                      // System.out.println("Connection closed");
                      
                   }
-               } packets++;
+               }
+               //UNTIL HERE
+               
+               packets++;
                System.out.println("All clients have received the packet "+(packets-1));
                if(packets==packetsNeeded+1)
                break;   
