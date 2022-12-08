@@ -20,8 +20,8 @@ public class server {
       while (true) {
 
          int packets = 1; // no of packets sent for each file
-         long bytesSend = 0;
-         int packetsSent = 0;
+         long bytesSend[] = new long[11];
+         int packetsSent[] = new int[11];
          int received;
          byte[] buffer = new byte[10];
 
@@ -32,6 +32,8 @@ public class server {
             int position = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
             addresses[position] = packet.getAddress();
             cl_ports[position] = packet.getPort();
+            bytesSend[position] = 0;
+            packetsSent[position] = 0;
 
          }
 
@@ -111,14 +113,13 @@ public class server {
                // sending the packet itself
                packet = new DatagramPacket(data, size,addresses[i],cl_ports[i]);
                server.send(packet);
-
-                  // receive status of packet (1 received 0 failed)
+                   // receive status of packet (1 received 0 failed)
                   status = new DatagramPacket(buffer2, buffer2.length);
                   server.receive(status);
                   received = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
 
-                  packetsSent++;
-                  bytesSend += size;
+                  packetsSent[i]++;
+                  bytesSend[i] += size;
                   while (received == 0) { 
                      buffer2 = new byte[10];
 
@@ -135,22 +136,23 @@ public class server {
                      status = new DatagramPacket(buffer2, buffer2.length);
                      server.receive(status);
                      received = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
-                     packetsSent++;
-                     bytesSend += size;
+                     packetsSent[i]++;
+                     bytesSend[i] += size;
                   }
 
                   // packets++;
 
                   System.out.println("Packet no. " + packets + " sent to client" +i+ "!Length:" + size);
+                 
 
                   if (packets == packetsNeeded) {
                      // sending total bytes sent
-                     buffer = Long.toString(bytesSend).getBytes();
+                     buffer = Long.toString(bytesSend[i]).getBytes();
                      bytes = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
                      server.send(bytes);
 
                      // sending total packets sent
-                     buffer = Integer.toString(packetsSent).getBytes();
+                     buffer = Integer.toString(packetsSent[i]).getBytes();
                      bytes = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
                      server.send(bytes);
                      System.out.println("Client "+i +"  fully received the file!");

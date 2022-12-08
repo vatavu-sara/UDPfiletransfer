@@ -18,12 +18,15 @@ public class client {
 		int port = Integer.parseInt(args[0]);
 		int noProcess= Integer.parseInt(args[1]);
 		String filename = args[2]; // name of file wanted
+		String dirName="client"+noProcess; //create directory client1..
+		new File(dirName).mkdir();
+
 		String newfilepath ="client"+noProcess+"/"+filename; // path of new file
 		int probFail = Integer.parseInt(args[3]); //probability % of simulating fail
 		int packets = 1; // nr of packets received
 		int packetsSent;
 		int bytesReceived=0;
-		
+
 
 		FileOutputStream FOS = new FileOutputStream(newfilepath);
 		DatagramSocket client = new DatagramSocket();
