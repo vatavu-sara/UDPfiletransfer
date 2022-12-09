@@ -4,7 +4,8 @@ import java.net.*;
 import java.io.*;
 import java.util.Random;
 
-public class client {
+public class client extends Thread{
+	private String[] args;
 
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
@@ -38,18 +39,7 @@ public class client {
 		//receive ack that all clients are connected
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
-		System.out.println(new String(packet.getData(), 0, packet.getLength()));
 		System.out.println("Hello there client! All clients are now connected to the server");
-
-		
-		// send which file wanted to server = move to sv
-		/*buffer = new byte[100];
-		buffer = filename.getBytes();
-		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
-		client.send(packet);*/
-
-		
-		System.out.println("Client -> "+client.getInetAddress()+":"+client.getPort());
 		
 
 		// receive no of packets needed
@@ -130,6 +120,22 @@ public class client {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+		}
+	}
+
+	   //to run the client
+	public void setArgs(String[] args) {
+		this.args = args;
+	}
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		super.run();
+		try {
+			main(args);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 }
