@@ -23,7 +23,6 @@ public class server {
          int packets = 1; // no of packets sent for each file
          long bytesSend[] = new long[11];
          int packetsSent[] = new int[11];
-         int received;
          byte[] buffer = new byte[10];
 
          // connecting to the clients
@@ -65,17 +64,18 @@ public class server {
             }
          }*/
 
-         System.out.println("Clients wants the file: " + fileName);
+         System.out.println("Sending file: " + fileName);
 
          // making file input stream(to read from it)
          FileInputStream fis = new FileInputStream(new File(fileName));
 
          // max 65507 ?
          int packetsNeeded = fis.available() / 65507 + 1; // nr of packets needed for each
+         System.out.println("Needs " + packetsNeeded + " packets to transmit " + fileName);
 
          for (int i = 1; i <= noc; i++) {
             // send nr of packets needed
-            buffer = new byte[100];
+            buffer = new byte[100000000];
             buffer = Integer.toString(packetsNeeded).getBytes();
 
             System.out.println("Address: " + addresses[i] + " Port: " + cl_ports[i]);
@@ -84,9 +84,8 @@ public class server {
          }
 
          while (true) {
-            try { DatagramPacket packetLength= null;
-               DatagramPacket status=null;
-               DatagramPacket bytes=null;
+            try {
+               System.out.println("Loops");;
                // sending data in packets of 65507
                byte data[] = new byte[65507];
    
@@ -103,8 +102,19 @@ public class server {
                // packet length
 
 
+
+               senderThread[] threads = new senderThread[noc+1];
+               for(int i = 1; i<= noc; ++i) {
+                  threads[i] = new senderThread(server, addresses[i], cl_ports[i], size, data);
+                  threads[i].start();
+               }
+               for(int i = 1; i<= noc; ++i) {
+                  threads[i].join();
+               }
+
+
                //FROM HERE IN THREAD
-               for (int i = 1; i <= noc; i++) {
+               /*for (int i = 1; i <= noc; i++) {
                   byte buffer2[] = new byte[10];
                
                   //send packet length
@@ -143,12 +153,10 @@ public class server {
                      bytesSend[i] += size;
                   }
 
-                  // packets++;
-
                   System.out.println("Packet no. " + packets + " sent to client" +i+ "!Length:" + size);
                  
 
-                  if (packets == packetsNeeded) {
+                 /*if (packets == packetsNeeded) {
                      // sending total bytes sent
                      buffer = Long.toString(bytesSend[i]).getBytes();
                      bytes = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
@@ -162,8 +170,8 @@ public class server {
                      // server.close();
                      // System.out.println("Connection closed");
                      
-                  }
-               }
+                  }*/
+               
                //UNTIL HERE
                
                packets++;
@@ -171,12 +179,15 @@ public class server {
                if(packets==packetsNeeded+1)
                break;   
                
-            } catch (SocketTimeoutException s) {
+           } catch (SocketTimeoutException s) {
                System.out.println("Socket timed out!");
                break;
             } catch (IOException e) {
                e.printStackTrace();
                break;
+            } catch (InterruptedException e) {
+               // TODO Auto-generated catch block
+               e.printStackTrace();
             }
          }
       }

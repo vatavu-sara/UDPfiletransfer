@@ -1,6 +1,7 @@
 // client.java
 
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.io.*;
 import java.util.Random;
 
@@ -15,13 +16,13 @@ public class client {
 		InetAddress serverName = InetAddress.getLocalHost();
 		int port = Integer.parseInt(args[0]);
 		int noProcess= Integer.parseInt(args[1]);
-		String dirName="client"+noProcess; //create directory client1..
+		String dirName="clients/client"+noProcess; //create directory client1..
 		new File(dirName).mkdir();
 
 
 
-		String newfilepath ="client"+noProcess+" /received"; // path of new file
-		int probFail = Integer.parseInt(args[3]); //probability % of simulating fail
+		String newfilepath =dirName+"/received"; // path of new file
+		int probFail = Integer.parseInt(args[2]); //probability % of simulating fail
 		int packets = 1; // nr of packets received
 		int packetsSent;
 		int bytesReceived=0;
@@ -40,6 +41,7 @@ public class client {
 		//receive ack that all clients are connected
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
+		System.out.println(new String(packet.getData(), 0, packet.getLength()));
 		System.out.println("Hello there client! All clients are now connected to the server");
 
 		
@@ -57,6 +59,8 @@ public class client {
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+		//packetsNeeded = packet.getData()[0] & 0xFF;
+	
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 		while (true) {
@@ -118,7 +122,7 @@ public class client {
 
 				if (packets > packetsNeeded) {
 			
-					packet=new DatagramPacket(buffer, buffer.length);
+					/*packet=new DatagramPacket(buffer, buffer.length);
 					client.receive(packet);
 					Long bytesSent = Long.parseLong(new String(packet.getData(), 0, packet.getLength()));
 
@@ -127,7 +131,7 @@ public class client {
 					packetsSent = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
 					System.out.println("Bytes sent: "+bytesSent + "Bytes received: "+bytesReceived );
-					System.out.println("Packets sent: "+packetsSent +" Packets received: "+(packets-1) +" Retransmissions:" + (packetsSent-packets+1));
+					System.out.println("Packets sent: "+packetsSent +" Packets received: "+(packets-1) +" Retransmissions:" + (packetsSent-packets+1));*/
 					client.close();
 					FOS.close();
 					System.out.println("Done. Socket closed");
