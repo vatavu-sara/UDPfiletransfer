@@ -56,10 +56,10 @@ public class client {
 		
 
 		// receive no of packets needed
+		buffer = new byte[10];
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-		//packetsNeeded = packet.getData()[0] & 0xFF;
 	
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
