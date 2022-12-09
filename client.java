@@ -56,7 +56,8 @@ public class client {
 		
 
 		// receive no of packets needed
-		buffer = new byte[10];
+		buffer = new byte[10]; //fixed issue by recreating a new buffer for sending the numbers of packets
+	
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
