@@ -72,8 +72,10 @@ public class client {
 
 				// receive lenght of new packet
 				packet = new DatagramPacket(buffer2, buffer2.length);
+				System.out.println("awaiting size of new packet...");
 				client.receive(packet);
 				int length = Integer.parseInt(new String(packet.getData(),0,packet.getLength()));
+				System.out.println("New packet length = " + length);
 
 				//receive packet		
 				packet = new DatagramPacket(data, length);
@@ -86,26 +88,27 @@ public class client {
 				
 
 				while(chance < probFail ) {
-				byte[] buffer3 = new byte[10];
-				
-				System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail);
+					byte[] buffer3 = new byte[10];
+					
+					System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail);
 
-				//sending 0 for resend
-				buffer2= Integer.toString(0).getBytes();
-               	packet = new DatagramPacket(buffer2, buffer2.length, serverName, port);
-               	client.send(packet);
+					//sending 0 for resend
+					buffer2 = new byte[10];
+					buffer2= Integer.toString(0).getBytes();
+					packet = new DatagramPacket(buffer2, buffer2.length, serverName, port);
+					client.send(packet);
 
-				//simulating a fail if chance <=probFail
-				chance = rand.nextInt(100);
+					// receive lenght of new packet
+					packet = new DatagramPacket(buffer3, buffer3.length);
+					client.receive(packet);
+					length = Integer.parseInt(new String(packet.getData(),0,packet.getLength()));
 
-				// receive lenght of new packet
-				packet = new DatagramPacket(buffer3, buffer3.length);
-				client.receive(packet);
-				length = Integer.parseInt(new String(packet.getData(),0,packet.getLength()));
+					//receive packet		
+					packet = new DatagramPacket(data, length);
+					client.receive(packet);
 
-				//receive packet		
-				packet = new DatagramPacket(data, length);
-				client.receive(packet);
+					//simulating a fail if chance <=probFail
+					chance = rand.nextInt(100);
 
 				}
 
@@ -120,19 +123,9 @@ public class client {
 
 				FOS.write(data,0,length);
 				FOS.flush();
+				System.out.println("next...");
 
 				if (packets > packetsNeeded) {
-			
-					/*packet=new DatagramPacket(buffer, buffer.length);
-					client.receive(packet);
-					Long bytesSent = Long.parseLong(new String(packet.getData(), 0, packet.getLength()));
-
-					packet=new DatagramPacket(buffer, buffer.length);
-					client.receive(packet);
-					packetsSent = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-
-					System.out.println("Bytes sent: "+bytesSent + "Bytes received: "+bytesReceived );
-					System.out.println("Packets sent: "+packetsSent +" Packets received: "+(packets-1) +" Retransmissions:" + (packetsSent-packets+1));*/
 					client.close();
 					FOS.close();
 					System.out.println("Done. Socket closed");
