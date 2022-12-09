@@ -3,7 +3,8 @@
 import java.net.*;
 import java.io.*;
 
-public class server {
+public class server extends Thread{
+   private String[] args;
    public static void main(String[] args) throws IOException {
       if(args.length!=3) {
 			System.out.println("Arguments not valid!(Need 2)");
@@ -15,13 +16,13 @@ public class server {
       DatagramPacket packet = null;
       int noc = Integer.parseInt(args[1]); // number of clients
       String fileName = args[2];
-      InetAddress addresses[] = new InetAddress[11];
-      int cl_ports[] = new int[10];
+      InetAddress addresses[] = new InetAddress[noc];
+      int cl_ports[] = new int[noc];
 
 
       int packets = 0; // no of packets sent for each file
-      long bytesSend[] = new long[10];
-      int packetsSent[] = new int[10];
+      long bytesSend[] = new long[noc];
+      int packetsSent[] = new int[noc];
       byte[] buffer = new byte[10];
 
       // connecting to the clients
@@ -122,19 +123,40 @@ public class server {
          totalByteSent += i;
       }
 
-      System.out.println("\nStats :\n\tGlobal :");
-      System.out.println("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent);
-      System.out.println("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent);
+      FileOutputStream stream = new FileOutputStream("stats");
 
-      System.out.println("\n\tBy client :");
+      stream.write("\nStats :\n\tGlobal :\n".getBytes());
+      stream.write(("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent + "\n").getBytes());
+      stream.write(("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent + " " + Launcher.byteToPrefixByte(totalByteSent) + "\n").getBytes());
+
+      stream.write("\n\tBy client :\n".getBytes());
       for(int i = 0; i<noc; i++) {
          float estimatedProbFail = (1-((float)packetsNeeded / packetsSent[i]))*100;
-         System.out.println("\t\t- Client no " + i + ":");
-         System.out.println("\t\t\t- Packets sent : " + packetsSent[i]);
-         System.out.println("\t\t\t- Bytes sent : " + bytesSend[i]);
-         System.out.println("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail);
+         stream.write(("\t\t- Client no " + i + ":\n").getBytes());
+         stream.write(("\t\t\t- Packets sent : " + packetsSent[i] + "\n").getBytes());
+         stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " +Launcher.byteToPrefixByte(bytesSend[i]) + "\n").getBytes());
+         stream.write(("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail + "\n").getBytes());
       }
 
+      System.out.println("You can find statistical report in ./stats");
 
+   }
+
+
+
+   //to run the server
+   public void setArgs(String[] args) {
+      this.args = args;
+   }
+   @Override
+   public void run() {
+       // TODO Auto-generated method stub
+      super.run();
+      try {
+         main(args);
+      } catch (IOException e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
    }
 }
