@@ -75,7 +75,7 @@ public class server {
 
          for (int i = 1; i <= noc; i++) {
             // send nr of packets needed
-            buffer = new byte[100000000];
+            buffer = new byte[10];
             buffer = Integer.toString(packetsNeeded).getBytes();
 
             System.out.println("Address: " + addresses[i] + " Port: " + cl_ports[i]);
@@ -85,7 +85,6 @@ public class server {
 
          while (true) {
             try {
-               System.out.println("Loops");;
                // sending data in packets of 65507
                byte data[] = new byte[65507];
    
