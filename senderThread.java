@@ -43,13 +43,12 @@ public class senderThread extends Thread {
 
         int received = 0;
 
-        System.out.println("sending...");
+        System.out.println("Sending to client " + cnb + " at " + addr + ":" + port);
 
         try {
             
         //copy past of sara's code :p with a bit of editing
         while (received == 0) { //send until the client confirm he has received the packet
-            System.out.println("client nb " + cnb + "-> "+addr+":"+port);
             byte[] buffer2 = new byte[10];
 
             // sending the packet length
@@ -65,22 +64,23 @@ public class senderThread extends Thread {
             status = new DatagramPacket(buffer2, buffer2.length);
             server.receive(status);
             received = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
-            if(received == 0) {
-                System.out.println("Resending packet " + pnb + " to client " + cnb);
+
+            if(received == 0) { //just there to send message if it fail after (could use do while but not the priority at the moment)
+                System.out.println("Failed : Resending packet " + pnb + " to client " + cnb);
             }
             packetsSent++;
             bytesSend += size;
         }
         } catch (Exception e) {
-            // TODO: handle exception
             e.printStackTrace();
         }
 
 
-        System.out.println("Packet no. " + pnb + " sent to client" +cnb+ "!Length:" + size);
+        System.out.println("Packet no. " + pnb + " sent to client" +cnb+ "! Length:" + size);
         
     }    
 
+    //used for stats at the end
     public int getNBPacketSent() {
         return packetsSent;
     }

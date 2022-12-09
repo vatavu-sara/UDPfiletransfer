@@ -63,35 +63,18 @@ public class client {
 
 		while (true) {
 			try {
-				/*// receiving file packets
-				
-				
-
-				// receive lenght of new packet
-				packet = new DatagramPacket(buffer2, buffer2.length);
-				System.out.println("awaiting size of new packet...");
-				client.receive(packet);
-				int length = Integer.parseInt(new String(packet.getData(),0,packet.getLength()));
-				System.out.println("New packet length = " + length);
-
-				//receive packet		
-				packet = new DatagramPacket(data, length);
-				client.receive(packet);
-
-				//simulating a fail if chance <probFail 
-				Random rand= new Random();*/
-				int chance = 100;
-				int length = 0;
-				Random rand = new Random();
-				byte[] signal = new byte[10];
+				int chance = 100; //default chance is 100 will be overwriten because it is used 
+				int length = 0; //length of the packet to be received
+				Random rand = new Random(); // random for simulating failure
+				byte[] signal = new byte[10];//for signaling to the server that we received the packet or not
 				byte[] data = new byte[65507]; 
 
 				int status = 0;
 
-				while(status == 0) {
-					byte[] packetLen = new byte[10];
+				while(status == 0) {// might also be optimized with do while but not priority at the moment
+					byte[] packetLen = new byte[10]; //packLen -> packet with the len of the other packet; not to be confused with length tho packLen give the value of length
 					
-					data = new byte[65507];
+					data = new byte[65507]; //reset the data buffer each time
 					
 
 					// receive lenght of new packet
@@ -104,9 +87,9 @@ public class client {
 					client.receive(packet);
 
 					//simulating a fail if chance <=probFail
-					chance = rand.nextInt(99) + 1;
+					chance = rand.nextInt(99) + 1; //formula for rng between range "generateRandom(max - min)+min"
 
-					if(chance < probFail) {
+					if(chance < probFail) { //in case of failure (reminder probFail is provided as argument)
 						status = 0;
 						
 						System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail);
@@ -129,18 +112,19 @@ public class client {
 				signal= Integer.toString(status).getBytes();
                	packet = new DatagramPacket(signal, signal.length, serverName, port);
                	client.send(packet);
-				System.out.println("Packet no. " + packets + " received!Length: "+length);
+
+				System.out.println("Packet no. " + packets + " received !Length: "+length + "\n");
 				packets++;
 
+				//writing to buffer and flushing it
 				FOS.write(data,0,length);
 				FOS.flush();
-				System.out.println("next...");
 
 				if (packets > packetsNeeded) {
 					client.close();
 					FOS.close();
-					System.out.println("Done. Socket closed");
-					break;
+					System.out.println("Done transmiting. Socket closed\nYou may observe the resulting file in " + dirName);
+					break;//breaks out of the while loop as we have finished
 				}
 
 			} catch (IOException e) {
