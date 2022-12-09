@@ -1,4 +1,3 @@
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -41,7 +40,6 @@ public class senderThread extends Thread {
         DatagramPacket packet = null;
         DatagramPacket packetLength= null;
         DatagramPacket status=null;
-        DatagramPacket bytes=null;
 
         int received = 0;
 
@@ -51,7 +49,7 @@ public class senderThread extends Thread {
             
         //copy past of sara's code :p with a bit of editing
         while (received == 0) { //send until the client confirm he has received the packet
-            System.out.println("client nb " + cnb);
+            System.out.println("client nb " + cnb + "-> "+addr+":"+port);
             byte[] buffer2 = new byte[10];
 
             // sending the packet length

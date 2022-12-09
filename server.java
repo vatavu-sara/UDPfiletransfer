@@ -33,6 +33,7 @@ public class server {
          cl_ports[position] = packet.getPort();
          bytesSend[position] = 0;
          packetsSent[position] = 0;
+         System.out.println("Client " + i + ": "+addresses[i]+":"+cl_ports[i]);
 
       }
 
@@ -70,7 +71,7 @@ public class server {
 
       // max 65507 ?
       int packetsNeeded = fis.available() / 65507 + 1; // nr of packets needed for each
-      System.out.println("Needs " + packetsNeeded + " packets to transmit " + fileName);
+      System.out.println("Needs " + packetsNeeded + " packets to transmit " + fileName + "\n\n");
 
       for (int i = 0; i < noc; i++) {
          // send nr of packets needed
@@ -82,7 +83,7 @@ public class server {
          server.send(packet);
       }
 
-      while (packets<packetsNeeded+1) {
+      while (packets<packetsNeeded) {
          try {
             // sending data in packets of 65507
             byte data[] = new byte[65507];
@@ -101,13 +102,14 @@ public class server {
 
 
 
-            senderThread[] threads = new senderThread[noc+1];
-            for(int i = 0; i< noc; ++i) {
+            senderThread[] threads = new senderThread[noc];
+            for(int i = 0; i< noc; i++) {
                threads[i] = new senderThread(server, addresses[i], cl_ports[i], size, data, packets, i);
-               threads[i].start();
+               threads[i].run();
             }
-            for(int i = 0; i< noc; ++i) {
+            for(int i = 0; i< noc; i++) {
                threads[i].join();
+               System.out.println("finished waiting for client " + i);
                packetsSent[i] += threads[i].getNBPacketSent();
                bytesSend[i] += threads[i].getNBByteSent();
             }
@@ -142,9 +144,18 @@ public class server {
       }
 
 
-      System.out.println("\n\nStats :");
-      System.out.println("\tTotal packet sent to all (" + noc + ") clients :" + totalPacketSent);
-      System.out.println("\tTotal byte sent to all (" + noc + ") clients :" + totalByteSent);
+      System.out.println("\nStats :\n\tGlobal :");
+      System.out.println("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent);
+      System.out.println("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent);
+
+      System.out.println("\n\tBy client :");
+      for(int i = 0; i<noc; i++) {
+         float estimatedProbFail = (1-((float)packetsNeeded / packetsSent[i]))*100;
+         System.out.println("\t\t- Client no " + i + ":");
+         System.out.println("\t\t\t- Packets sent : " + packetsSent[i]);
+         System.out.println("\t\t\t- Bytes sent : " + bytesSend[i]);
+         System.out.println("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail);
+      }
 
 
    }
