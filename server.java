@@ -29,12 +29,12 @@ public class server extends Thread{
       for (int i = 0; i < noc; i++) {
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);
-         int position = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+         int position = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()))-1;
          addresses[position] = packet.getAddress();
          cl_ports[position] = packet.getPort();
          bytesSend[position] = 0;
          packetsSent[position] = 0;
-         System.out.println("Client " + i + ": "+addresses[i]+":"+cl_ports[i]);
+         System.out.println("Client " + (i+1)+": "+addresses[i]+":"+cl_ports[i]);
 
       }
 
@@ -89,7 +89,7 @@ public class server extends Thread{
             for(int i = 0; i< noc; i++) {
                //once every thread is launched wait for them to finish before proceeding
                threads[i].join();
-               System.out.println("finished waiting for client " + i);
+               System.out.println("finished waiting for client " + (i+1));
                packetsSent[i] += threads[i].getNBPacketSent();
                bytesSend[i] += threads[i].getNBByteSent();
             }

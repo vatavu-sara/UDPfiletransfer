@@ -29,8 +29,8 @@ public class senderThread extends Thread {
         this.data = data;
         this.size = size;
 
-        pnb = packetNumber;
-        cnb = clientNumber;
+        pnb = packetNumber+1; //added +1 to start from 1 not from 0
+        cnb = clientNumber+1; //same
     }
 
     @Override

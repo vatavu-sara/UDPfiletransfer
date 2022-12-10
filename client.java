@@ -15,7 +15,7 @@ public class client extends Thread{
 		}
 		InetAddress serverName = InetAddress.getLocalHost();
 		int port = Integer.parseInt(args[0]);
-		int noProcess= Integer.parseInt(args[1]);
+		int noProcess= Integer.parseInt(args[1])+1; //to start from 0
 		String dirName="clients/client"+noProcess; //create directory client1..
 		new File(dirName).mkdir();
 

@@ -3,9 +3,9 @@ import java.util.Random;
 public class Launcher {
 
     //Parameters
-    private static int NumberOfClient = 50;
+    private static int NumberOfClient = 10;
     private static int port = 8000;
-    private static String file = "./toTransfer/Partie1.txt";
+    private static String file = "sara.jpg";
     private static int maxProbFail = 50;
     
     
@@ -31,7 +31,7 @@ public class Launcher {
     }
 
     public static String byteToPrefixByte(long n) {
-        char[] prefixes = {'k', 'M', 'G', 'T'};
+        char[] prefixes = {'K', 'M', 'G', 'T'};
         int pref = -1;
 
         String formated = "(~";
