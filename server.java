@@ -94,13 +94,13 @@ public class server extends Thread{
             for(int i = 0; i< noc; i++) {
                //once every thread is launched wait for them to finish before proceeding
                threads[i].join();
-               System.out.println("finished waiting for client " + (i+1));
+               //System.out.println("finished waiting for client " + (i+1));
                packetsSent[i] += threads[i].getNBPacketSent();
                bytesSend[i] += threads[i].getNBByteSent();
             }
 
             packets++;
-            System.out.println("All clients have received the packet "+ (packets) + "\n");
+            //System.out.println("All clients have received the packet "+ (packets) + "\n");
             
          } catch (SocketTimeoutException s) {
             System.out.println("Socket timed out!");

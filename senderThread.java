@@ -29,7 +29,7 @@ public class senderThread extends Thread {
         this.size = size;
 
         pnb = packetNumber+1; //added +1 to start from 1 not from 0
-        cnb = clientNumber+1; //same
+        cnb = clientNumber; //same
     }
 
     @Override
@@ -46,7 +46,7 @@ public class senderThread extends Thread {
 
         int received = 0;
 
-        System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
+        //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
         try {
             
@@ -78,7 +78,7 @@ public class senderThread extends Thread {
             }
                //so here we should add a timeout so i just put a sleep of 0.1s
                 //sleep(100);
-            System.out.println("From "+Thread.currentThread()+": Failed : Resending packet "+ pnb+ " to client " +cnb);
+            //System.out.println("From "+Thread.currentThread()+": Failed : Resending packet "+ pnb+ " to client " +cnb);
         }
         } catch (Exception e) {
             e.printStackTrace();

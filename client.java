@@ -16,7 +16,7 @@ public class client extends Thread{
 		InetAddress serverName = InetAddress.getLocalHost();
 		int port = Integer.parseInt(args[0]);
 		int noProcess= Integer.parseInt(args[1]); //to start from 0
-		String dirName="clients/client"+(noProcess+1); //create directory client1..
+		String dirName="clients/client"+noProcess; //create directory client1..
 		new File(dirName).mkdir();
 
 
@@ -49,7 +49,7 @@ public class client extends Thread{
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 	
-		System.out.println("Your file will come in " + packetsNeeded + " packets!");
+		//System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 
 		while (true) {
@@ -82,7 +82,7 @@ public class client extends Thread{
 
 					if(chance < probFail) { //in case of failure (reminder probFail is provided as argument)
 				
-						System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail +"in client"+ (noProcess+1));
+						//System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail +"in client"+ (noProcess+1));
 
 						//sending 0 for resend
 						signal = new byte[10];
@@ -103,7 +103,7 @@ public class client extends Thread{
                	packet = new DatagramPacket(signal, signal.length, serverName, port);
                	client.send(packet);
 
-				System.out.println("Packet no. " + packets + " received"+" (c"+(noProcess+1)+") "+"; !Length: "+length + "\n");
+				//System.out.println("Packet no. " + packets + " received"+" (c"+noProcess+") "+"; !Length: "+length + "\n");
 				packets++;
 
 				//writing to buffer and flushing it
@@ -113,7 +113,7 @@ public class client extends Thread{
 				if (packets > packetsNeeded) {
 					client.close();
 					FOS.close();
-					System.out.println("C"+(noProcess+1)+":Done transmiting. Socket closed\nYou may observe the resulting file in " + dirName);
+					System.out.println("C"+noProcess+":Done transmiting. Socket closed\nYou may observe the resulting file in " + dirName);
 					break;//breaks out of the while loop as we have finished
 				}
 
