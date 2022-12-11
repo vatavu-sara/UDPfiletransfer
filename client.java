@@ -15,8 +15,8 @@ public class client extends Thread{
 		}
 		InetAddress serverName = InetAddress.getLocalHost();
 		int port = Integer.parseInt(args[0]);
-		int noProcess= Integer.parseInt(args[1])+1; //to start from 0
-		String dirName="clients/client"+noProcess; //create directory client1..
+		int noProcess= Integer.parseInt(args[1]); //to start from 0
+		String dirName="clients/client"+(noProcess+1); //create directory client1..
 		new File(dirName).mkdir();
 
 
@@ -51,6 +51,7 @@ public class client extends Thread{
 	
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
+
 		while (true) {
 			try {
 				int chance = 100; //default chance is 100 will be overwriten because it is used 
@@ -59,9 +60,7 @@ public class client extends Thread{
 				byte[] signal = new byte[10];//for signaling to the server that we received the packet or not
 				byte[] data = new byte[65507]; 
 
-				int status = 0;
-
-				while(status == 0) {// might also be optimized with do while but not priority at the moment
+				do {// might also be optimized with do while but not priority at the moment
 					byte[] packetLen = new byte[10]; //packLen -> packet with the len of the other packet; not to be confused with length tho packLen give the value of length
 					
 					data = new byte[65507]; //reset the data buffer each time
@@ -71,39 +70,40 @@ public class client extends Thread{
 					packet = new DatagramPacket(packetLen, packetLen.length);
 					client.receive(packet);
 					length = Integer.parseInt(new String(packet.getData(),0,packet.getLength()));
+			
 
 					//receive packet		
 					packet = new DatagramPacket(data, length);
 					client.receive(packet);
 
+			
 					//simulating a fail if chance <=probFail
 					chance = rand.nextInt(99) + 1; //formula for rng between range "generateRandom(max - min)+min"
 
 					if(chance < probFail) { //in case of failure (reminder probFail is provided as argument)
-						status = 0;
-						
-						System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail);
+				
+						System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail +"in client"+ (noProcess+1));
 
 						//sending 0 for resend
 						signal = new byte[10];
-						signal = Integer.toString(status).getBytes();
+						signal = Integer.toString(0).getBytes();
 						packet = new DatagramPacket(signal, signal.length, serverName, port);
 						client.send(packet);
-						continue;
+						
 
 					} 
-					//implicit else
-					status = 1;
+					else
+					{break;}
 
-				}
+				}while(true);
 
 				//sending 1 for go forward
 				signal = new byte[10];
-				signal= Integer.toString(status).getBytes();
+				signal= Integer.toString(1).getBytes();
                	packet = new DatagramPacket(signal, signal.length, serverName, port);
                	client.send(packet);
 
-				System.out.println("Packet no. " + packets + " received !Length: "+length + "\n");
+				System.out.println("Packet no. " + packets + " received"+" (c"+(noProcess+1)+") "+"; !Length: "+length + "\n");
 				packets++;
 
 				//writing to buffer and flushing it
@@ -113,7 +113,7 @@ public class client extends Thread{
 				if (packets > packetsNeeded) {
 					client.close();
 					FOS.close();
-					System.out.println("Done transmiting. Socket closed\nYou may observe the resulting file in " + dirName);
+					System.out.println("C"+(noProcess+1)+":Done transmiting. Socket closed\nYou may observe the resulting file in " + dirName);
 					break;//breaks out of the while loop as we have finished
 				}
 

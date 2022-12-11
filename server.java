@@ -29,12 +29,12 @@ public class server extends Thread{
       for (int i = 0; i < noc; i++) {
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);
-         int position = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()))-1;
+         int position = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
          addresses[position] = packet.getAddress();
          cl_ports[position] = packet.getPort();
          bytesSend[position] = 0;
          packetsSent[position] = 0;
-         System.out.println("Client " + (i+1)+": "+addresses[i]+":"+cl_ports[i]);
+         System.out.println("Client " + position+": "+addresses[position]+":"+cl_ports[position]);
 
       }
 
@@ -84,7 +84,7 @@ public class server extends Thread{
             for(int i = 0; i< noc; i++) {
                //create a new thread and start it
                threads[i] = new senderThread(server, addresses[i], cl_ports[i], size, data, packets, i);
-               threads[i].run();
+               threads[i].start();
             }
             for(int i = 0; i< noc; i++) {
                //once every thread is launched wait for them to finish before proceeding
@@ -138,6 +138,7 @@ public class server extends Thread{
          stream.write(("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail + "\n").getBytes());
       }
 
+      stream.close();
       System.out.println("You can find statistical report in ./stats");
 
    }
@@ -148,6 +149,7 @@ public class server extends Thread{
    public void setArgs(String[] args) {
       this.args = args;
    }
+
    @Override
    public void run() {
        // TODO Auto-generated method stub
