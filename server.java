@@ -2,6 +2,8 @@
 
 import java.net.*;
 import java.io.*;
+import java.time.Instant;
+import java.time.Duration;
 
 public class server extends Thread{
    private String[] args;
@@ -10,6 +12,9 @@ public class server extends Thread{
 			System.out.println("Arguments not valid!(Need 2)");
 			System.exit(0);
 		}
+
+      Instant start,finish;
+      start = Instant.now();
       int rcv_port = Integer.parseInt(args[0]);
       DatagramSocket server = new DatagramSocket(rcv_port);
       System.out.println("Server started!");
@@ -123,9 +128,11 @@ public class server extends Thread{
          totalByteSent += i;
       }
 
+      finish=Instant.now();
       FileOutputStream stream = new FileOutputStream("stats");
-
+      Duration elapsed=Duration.between(start, finish);
       stream.write("\nStats :\n\tGlobal :\n".getBytes());
+      stream.write(("\t\t Time elapsed: m:" +elapsed.toMinutes()+" s:"+elapsed.toSeconds()%60+" ms:"+elapsed.toMillis()%1000+"\n").getBytes());
       stream.write(("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent + "\n").getBytes());
       stream.write(("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent + " " + Launcher.byteToPrefixByte(totalByteSent) + "\n").getBytes());
 
