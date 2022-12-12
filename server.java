@@ -121,12 +121,13 @@ public class server extends Thread {
             break;
          case "goBackN":
             try {
-               System.out.println("Go-back-N method chosen! Window size:" +windowSize);
+               System.out.println("Go-back-N method chosen! Window size:" + windowSize);
                if (windowSize > packetsNeeded)
                   windowSize = packetsNeeded;
 
                // creating the N packets' data list
                ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
+               ArrayList<Integer> sizes = new ArrayList<Integer>(windowSize);
                for (int i = 0; i < windowSize; i++) {
                   // sending data in packets of 65507
                   byte data[] = new byte[65507];
@@ -139,9 +140,10 @@ public class server extends Thread {
                   }
                   if (size != 65507)
                      size--;
-                  
-                  System.out.println("Packet "+ i +"added to arraylist");
+
+                  System.out.println("Packet " + i + "added to arraylist");
                   packetsList.add(data);
+                  sizes.add(size);
                }
 
                senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
@@ -149,79 +151,73 @@ public class server extends Thread {
                for (int i = 0; i < noc; i++)
                   // create a new thread and start it
                   for (int j = 0; j < windowSize; j++) {
-                  System.out.println("Creating thread no " +j + " for client "+ i );
-                     threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], packetsList.get(j).length,
-                           packetsList.get(j), packets+j, i);
+                     System.out.println("Creating thread no " + j + " for client " + i);
+                     threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
+                           packetsList.get(j), packets + j, i);
                      threads[i][j].start();
                   }
 
-               int allReceived = 1;
-               while (packets < packetsNeeded-windowSize) {
+               while (packets < packetsNeeded) {
+                  int allReceived;
+
                   do {
+                     allReceived=1;
                      for (int i = 0; i < noc; i++) {
                         threads[i][0].join();
+                        System.out.println("Waiting for packet " + packets + " from client " + i);
                         packetsSent[i] += threads[i][0].getNBPacketSent();
                         bytesSend[i] += threads[i][0].getNBByteSent();
                         if (threads[i][0].getReceived() == 0) {
-                           System.out.println("Packet "+packets+"not received by client "+i+" Resending...");
-                           for (int j = 0; j < windowSize; j++)
-                              {threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], packetsList.get(j).length,
-                              packetsList.get(j), packets+j, i);
-                              threads[i][j].start();}
+                           System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
+                           for (int j = 0; j < windowSize; j++) {
+                              threads[i][j].join();
+                              if (threads[i][j].getReceived() == 0) {
+                                 senderThreadGBN tmp = threads[i][j];
+                                 threads[i][j] = new senderThreadGBN(server, tmp.getAddr(), tmp.getPort(),
+                                       tmp.getSize(), tmp.getData(), packets + j, i);
+                              }
+                           }
                            allReceived = 0;
                            break;
                         }
                      }
                      if (allReceived == 1) {
-                        if(packets==packetsNeeded) break;
+
+                        System.out.println("All good for packet " + packets++);
                         packetsList.remove(0);
+
+                        if (packets <= packetsNeeded - windowSize)
                         // sending data in packets of 65507
-                        byte data[] = new byte[65507];
+                        {
+                           byte data[] = new byte[65507];
 
-                        // Generate the data used for the packet
-                        int size = 0;
-                        while (size < 65507 && fis.available() != 0) {
-                           data[size] = (byte) fis.read();
-                           size++;
-                        }
-                        if (size != 65507)
-                           size--;
-
-                        packetsList.add(data);
-                        for (int k = 0; k < noc; k++) {
-                           {
-                              for (int j = 0; j < windowSize - 1; j++)
-                                 threads[k][j] = threads[k][j + 1];
+                           // Generate the data used for the packet
+                           int size = 0;
+                           while (size < 65507 && fis.available() != 0) {
+                              data[size] = (byte) fis.read();
+                              size++;
                            }
-                           threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
-                                 packetsList.get(k).length,
-                                 packetsList.get(k), packets+windowSize-1, k);
-                           threads[k][windowSize - 1].start();
+                           if (size != 65507)
+                              size--;
 
+                           packetsList.add(data);
+                           sizes.add(size);
+                           for (int k = 0; k < noc; k++) {
+                              {
+                                 for (int j = 0; j < windowSize - 1; j++)
+                                    threads[k][j] = threads[k][j + 1];
+                              }
+                              threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
+                                    sizes.get(packetsList.size() - 1),
+                                    packetsList.get(packetsList.size() - 1), packets + windowSize - 1, k);
+                              threads[k][windowSize - 1].start();
+
+                           }
                         }
-                        packets++;
-
                      }
 
                   } while (allReceived == 0);
 
-               }
-               int k = 1;
-               while (k < windowSize){
-                  allReceived=1;
-                  for (int i = 0; i < noc; i++) {
-                     threads[i][k].join();
-                     packetsSent[i] += threads[i][0].getNBPacketSent();
-                     bytesSend[i] += threads[i][0].getNBByteSent();
-                     if (threads[i][0].getReceived() == 0) {
-                        allReceived=0;
-                        for (int j = k; j < windowSize; j++)
-                           threads[i][j].start();
-                        break;
-                     }
-                  }
-               if(allReceived==1)
-               k++;
                }
             } catch (Exception e) {
                // TODO: handle exception
@@ -229,8 +225,8 @@ public class server extends Thread {
             break;
       }
 
-      server.close();// we don't need it anymore
-      System.out.println("Sending file completed closing socket.");
+      // server.close();// we don't need it anymore
+      // System.out.println("Sending file completed closing socket.");
 
       // stats
       int totalPacketSent = 0;

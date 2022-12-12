@@ -31,7 +31,7 @@ public class senderThreadGBN extends Thread {
         this.data = data;
         this.size = size;
 
-        pnb = packetNumber+1; //added +1 to start from 1 not from 0
+        pnb = packetNumber; //added +1 to start from 1 not from 0
         cnb = clientNumber; //same
     }
 
@@ -43,11 +43,7 @@ public class senderThreadGBN extends Thread {
         DatagramPacket packetLength= null;
         DatagramPacket status=new DatagramPacket(data, 10);
 
-        //otherwise the threads would keep mixing themselves
-        status.setAddress(addr);
-        status.setPort(port);
-
-        System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
+        //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
         try {
             
@@ -58,11 +54,11 @@ public class senderThreadGBN extends Thread {
 
             // sending the packet length
             buffer2 = Integer.toString(size).getBytes();
-            packetLength = new DatagramPacket(buffer2, buffer2.length,status.getAddress(),status.getPort());
+            packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
             server.send(packetLength);
             
             // sending the packet itself
-            packet = new DatagramPacket(data, size,status.getAddress(),status.getPort());
+            packet = new DatagramPacket(data, size,addr,port);
             server.send(packet);
 
             // receive status of packet
@@ -71,7 +67,9 @@ public class senderThreadGBN extends Thread {
             received = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
 
             if(received==0)
-            System.out.println("From "+Thread.currentThread()+": Failed : Resending packet "+ pnb+ " to client " +cnb);
+            System.out.println("Received should be 0 for pck "+pnb +" in c"+cnb+"\n");
+            else
+            System.out.println("Received should be 1 for pck "+pnb +" in c"+cnb+"\n");
 
             packetsSent++;
             bytesSend += size;
@@ -82,9 +80,25 @@ public class senderThreadGBN extends Thread {
         }
 
 
-        System.out.println("From "+Thread.currentThread()+"Packet no. " + pnb + " sent to client" +cnb+ "! Length:" + size);
+        //System.out.println("From "+Thread.currentThread()+"Packet no. " + pnb + " sent to client" +cnb+ "! Length:" + size);
         
     }    
+
+    public InetAddress getAddr() {
+        return addr;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public byte[] getData() {
+        return data;
+    }
 
     //used for stats at the end
     public int getNBPacketSent() {
