@@ -82,8 +82,13 @@ public class client extends Thread{
 
 					if(chance < probFail) { //in case of failure (reminder probFail is provided as argument)
 				
-						//System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail +"in client"+ (noProcess+1));
-
+						System.out.println("Packet "+ packets +" failed to receive with "+ chance +"/" +probFail +"in client"+ noProcess);
+						//add a sleep as timeout
+						try {
+							//sleep(100);
+						} catch (Exception e) {
+							// TODO: handle exception
+						}
 						//sending 0 for resend
 						signal = new byte[10];
 						signal = Integer.toString(0).getBytes();
@@ -103,7 +108,7 @@ public class client extends Thread{
                	packet = new DatagramPacket(signal, signal.length, serverName, port);
                	client.send(packet);
 
-				//System.out.println("Packet no. " + packets + " received"+" (c"+noProcess+") "+"; !Length: "+length + "\n");
+				System.out.println("Packet no. " + packets + " received"+" (c"+noProcess+") "+"; !Length: "+length + "\n");
 				packets++;
 
 				//writing to buffer and flushing it

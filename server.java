@@ -3,17 +3,19 @@
 import java.net.*;
 import java.io.*;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.time.Duration;
 
-public class server extends Thread{
+public class server extends Thread {
    private String[] args;
-   public static void main(String[] args) throws IOException {
-      if(args.length!=3) {
-			System.out.println("Arguments not valid!(Need 2)");
-			System.exit(0);
-		}
 
-      Instant start,finish;
+   public static void main(String[] args) throws IOException {
+      if (args.length != 5) {
+         System.out.println("Arguments not valid!(Need 2)");
+         System.exit(0);
+      }
+
+      Instant start, finish;
       start = Instant.now();
       int rcv_port = Integer.parseInt(args[0]);
       DatagramSocket server = new DatagramSocket(rcv_port);
@@ -21,9 +23,10 @@ public class server extends Thread{
       DatagramPacket packet = null;
       int noc = Integer.parseInt(args[1]); // number of clients
       String fileName = args[2];
+      String algorithm = args[3];
+      int windowSize = Integer.parseInt(args[4]);
       InetAddress addresses[] = new InetAddress[noc];
       int cl_ports[] = new int[noc];
-
 
       int packets = 0; // no of packets sent for each file
       long bytesSend[] = new long[noc];
@@ -39,7 +42,7 @@ public class server extends Thread{
          cl_ports[position] = packet.getPort();
          bytesSend[position] = 0;
          packetsSent[position] = 0;
-         System.out.println("Client " + position+": "+addresses[position]+":"+cl_ports[position]);
+         System.out.println("Client " + position + ": " + addresses[position] + ":" + cl_ports[position]);
 
       }
 
@@ -51,7 +54,7 @@ public class server extends Thread{
          server.send(packet);
       }
 
-      System.out.println("All client connected\nSending file: " + fileName + " to all ("+noc+") clients.");
+      System.out.println("All client connected\nSending file: " + fileName + " to all (" + noc + ") clients.");
 
       // making file input stream(to read from it)
       FileInputStream fis = new FileInputStream(new File(fileName));
@@ -67,59 +70,171 @@ public class server extends Thread{
          packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
          server.send(packet);
       }
+      switch (algorithm) {
+         case "RDT":
+            while (packets < packetsNeeded) {
+               try {
+                  System.out.println("Reliable Data Transfer 3.0 method chosen!");
+                  // sending data in packets of 65507
+                  byte data[] = new byte[65507];
 
-      while (packets<packetsNeeded) {
-         try {
-            // sending data in packets of 65507
-            byte data[] = new byte[65507];
+                  // Generate the data used for the packet
+                  int size = 0;
+                  while (size < 65507 && fis.available() != 0) {
+                     data[size] = (byte) fis.read();
+                     size++;
+                  }
+                  if (size != 65507)
+                     size--;
 
+                  // array of senderThread (thread that manage the process of sending the file to
+                  // a client and resending if necessary)
+                  senderThreadRDT[] threads = new senderThreadRDT[noc];
+                  for (int i = 0; i < noc; i++) {
+                     // create a new thread and start it
+                     threads[i] = new senderThreadRDT(server, addresses[i], cl_ports[i], size, data, packets, i);
+                     threads[i].start();
+                  }
+                  for (int i = 0; i < noc; i++) {
+                     // once every thread is launched wait for them to finish before proceeding
+                     threads[i].join();
+                     // System.out.println("finished waiting for client " + (i+1));
+                     packetsSent[i] += threads[i].getNBPacketSent();
+                     bytesSend[i] += threads[i].getNBByteSent();
+                  }
 
-            //Generate the data used for the packet
-            int size = 0;
-            while (size < 65507 && fis.available() != 0) {
-               data[size] = (byte) fis.read();
-               size++;
+                  packets++;
+                  // System.out.println("All clients have received the packet "+ (packets) +
+                  // "\n");
+
+               } catch (SocketTimeoutException s) {
+                  System.out.println("Socket timed out!");
+                  break;
+               } catch (IOException e) {
+                  e.printStackTrace();
+                  break;
+               } catch (InterruptedException e) {
+                  // TODO Auto-generated catch block
+                  e.printStackTrace();
+               }
             }
-            if (size != 65507)
-               size--;
-
-
-            //array of senderThread (thread that manage the process of sending the file to a client and resending if necessary)
-            senderThread[] threads = new senderThread[noc];
-            for(int i = 0; i< noc; i++) {
-               //create a new thread and start it
-               threads[i] = new senderThread(server, addresses[i], cl_ports[i], size, data, packets, i);
-               threads[i].start();
-            }
-            for(int i = 0; i< noc; i++) {
-               //once every thread is launched wait for them to finish before proceeding
-               threads[i].join();
-               //System.out.println("finished waiting for client " + (i+1));
-               packetsSent[i] += threads[i].getNBPacketSent();
-               bytesSend[i] += threads[i].getNBByteSent();
-            }
-
-            packets++;
-            //System.out.println("All clients have received the packet "+ (packets) + "\n");
-            
-         } catch (SocketTimeoutException s) {
-            System.out.println("Socket timed out!");
             break;
-         } catch (IOException e) {
-            e.printStackTrace();
+         case "goBackN":
+            try {
+               System.out.println("Go-back-N method chosen! Window size:" +windowSize);
+               if (windowSize > packetsNeeded)
+                  windowSize = packetsNeeded;
+
+               // creating the N packets' data list
+               ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
+               for (int i = 0; i < windowSize; i++) {
+                  // sending data in packets of 65507
+                  byte data[] = new byte[65507];
+
+                  // Generate the data used for the packet
+                  int size = 0;
+                  while (size < 65507 && fis.available() != 0) {
+                     data[size] = (byte) fis.read();
+                     size++;
+                  }
+                  if (size != 65507)
+                     size--;
+                  
+                  System.out.println("Packet "+ i +"added to arraylist");
+                  packetsList.add(data);
+               }
+
+               senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
+
+               for (int i = 0; i < noc; i++)
+                  // create a new thread and start it
+                  for (int j = 0; j < windowSize; j++) {
+                  System.out.println("Creating thread no " +j + " for client "+ i );
+                     threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], packetsList.get(j).length,
+                           packetsList.get(j), packets+j, i);
+                     threads[i][j].start();
+                  }
+
+               int allReceived = 1;
+               while (packets < packetsNeeded-windowSize) {
+                  do {
+                     for (int i = 0; i < noc; i++) {
+                        threads[i][0].join();
+                        packetsSent[i] += threads[i][0].getNBPacketSent();
+                        bytesSend[i] += threads[i][0].getNBByteSent();
+                        if (threads[i][0].getReceived() == 0) {
+                           System.out.println("Packet "+packets+"not received by client "+i+" Resending...");
+                           for (int j = 0; j < windowSize; j++)
+                              {threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], packetsList.get(j).length,
+                              packetsList.get(j), packets+j, i);
+                              threads[i][j].start();}
+                           allReceived = 0;
+                           break;
+                        }
+                     }
+                     if (allReceived == 1) {
+                        if(packets==packetsNeeded) break;
+                        packetsList.remove(0);
+                        // sending data in packets of 65507
+                        byte data[] = new byte[65507];
+
+                        // Generate the data used for the packet
+                        int size = 0;
+                        while (size < 65507 && fis.available() != 0) {
+                           data[size] = (byte) fis.read();
+                           size++;
+                        }
+                        if (size != 65507)
+                           size--;
+
+                        packetsList.add(data);
+                        for (int k = 0; k < noc; k++) {
+                           {
+                              for (int j = 0; j < windowSize - 1; j++)
+                                 threads[k][j] = threads[k][j + 1];
+                           }
+                           threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
+                                 packetsList.get(k).length,
+                                 packetsList.get(k), packets+windowSize-1, k);
+                           threads[k][windowSize - 1].start();
+
+                        }
+                        packets++;
+
+                     }
+
+                  } while (allReceived == 0);
+
+               }
+               int k = 1;
+               while (k < windowSize){
+                  allReceived=1;
+                  for (int i = 0; i < noc; i++) {
+                     threads[i][k].join();
+                     packetsSent[i] += threads[i][0].getNBPacketSent();
+                     bytesSend[i] += threads[i][0].getNBByteSent();
+                     if (threads[i][0].getReceived() == 0) {
+                        allReceived=0;
+                        for (int j = k; j < windowSize; j++)
+                           threads[i][j].start();
+                        break;
+                     }
+                  }
+               if(allReceived==1)
+               k++;
+               }
+            } catch (Exception e) {
+               // TODO: handle exception
+            }
             break;
-         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-         }
       }
 
-      server.close();//we don't need it anymore
+      server.close();// we don't need it anymore
       System.out.println("Sending file completed closing socket.");
 
-      //stats
+      // stats
       int totalPacketSent = 0;
-      for (int i: packetsSent) {
+      for (int i : packetsSent) {
          totalPacketSent += i;
       }
 
@@ -128,20 +243,23 @@ public class server extends Thread{
          totalByteSent += i;
       }
 
-      finish=Instant.now();
+      finish = Instant.now();
       FileOutputStream stream = new FileOutputStream("stats");
-      Duration elapsed=Duration.between(start, finish);
+      Duration elapsed = Duration.between(start, finish);
       stream.write("\nStats :\n\tGlobal :\n".getBytes());
-      stream.write(("\t\t Time elapsed: m:" +elapsed.toMinutes()+" s:"+elapsed.toSeconds()%60+" ms:"+elapsed.toMillis()%1000+"\n").getBytes());
+      stream.write(("\t\t Time elapsed: m:" + elapsed.toMinutes() + " s:" + elapsed.toSeconds() % 60 + " ms:"
+            + elapsed.toMillis() % 1000 + "\n").getBytes());
       stream.write(("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent + "\n").getBytes());
-      stream.write(("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent + " " + Launcher.byteToPrefixByte(totalByteSent) + "\n").getBytes());
+      stream.write(("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent + " "
+            + Launcher.byteToPrefixByte(totalByteSent) + "\n").getBytes());
 
       stream.write("\n\tBy client :\n".getBytes());
-      for(int i = 0; i<noc; i++) {
-         float estimatedProbFail = (1-((float)packetsNeeded / packetsSent[i]))*100;
+      for (int i = 0; i < noc; i++) {
+         float estimatedProbFail = (1 - ((float) packetsNeeded / packetsSent[i])) * 100;
          stream.write(("\t\t- Client no " + i + ":\n").getBytes());
          stream.write(("\t\t\t- Packets sent : " + packetsSent[i] + "\n").getBytes());
-         stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " +Launcher.byteToPrefixByte(bytesSend[i]) + "\n").getBytes());
+         stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " + Launcher.byteToPrefixByte(bytesSend[i]) + "\n")
+               .getBytes());
          stream.write(("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail + "\n").getBytes());
       }
 
@@ -150,16 +268,14 @@ public class server extends Thread{
 
    }
 
-
-
-   //to run the server
+   // to run the server
    public void setArgs(String[] args) {
       this.args = args;
    }
 
    @Override
    public void run() {
-       // TODO Auto-generated method stub
+      // TODO Auto-generated method stub
       super.run();
       try {
          main(args);

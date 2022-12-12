@@ -1,17 +1,20 @@
+
 import java.util.Random;
 
 public class Launcher {
 
     //Parameters
-    private static int NumberOfClient = 10;
-    private static int port = 8000;
+    private static int NumberOfClient = 2;
+    private static int port = 4444;
     private static String file = "sara.jpg";
-    private static int maxProbFail = 50;
-    
+    private static int maxProbFail =50;
+    private static String algo = "goBackN"; //goBackN or RDT or maybe selectiveRepeat
+    private static int windowSize = 3; 
     
     public static void main(String[] args) {
+
         server s = new server();
-        String[] serverArgs = {Integer.toString(port), Integer.toString(NumberOfClient), file};
+        String[] serverArgs = {Integer.toString(port), Integer.toString(NumberOfClient), file,algo,Integer.toString(windowSize)};
         s.setArgs(serverArgs);
 
         s.start();
@@ -36,7 +39,6 @@ public class Launcher {
 
         String formated = "(~";
 
-        int count = 0;
         while (n > 1000 && pref <= 3) {
             n = n / 1000;
     
