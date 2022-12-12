@@ -53,6 +53,7 @@ public class senderThreadGBN extends Thread {
             byte[] buffer2 = new byte[10];
 
             // sending the packet length
+            System.out.println("Sending the size:"+size);
             buffer2 = Integer.toString(size).getBytes();
             packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
             server.send(packetLength);

@@ -147,10 +147,10 @@ public class server extends Thread {
                }
 
                senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
-
-               for (int i = 0; i < noc; i++)
+               for (int j = 0; j < windowSize; j++)
+                  for (int i = 0; i < noc; i++)
                   // create a new thread and start it
-                  for (int j = 0; j < windowSize; j++) {
+                  {
                      System.out.println("Creating thread no " + j + " for client " + i);
                      threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
                            packetsList.get(j), packets + j, i);
@@ -161,7 +161,7 @@ public class server extends Thread {
                   int allReceived;
 
                   do {
-                     allReceived=1;
+                     allReceived = 1;
                      for (int i = 0; i < noc; i++) {
                         threads[i][0].join();
                         System.out.println("Waiting for packet " + packets + " from client " + i);
@@ -175,6 +175,7 @@ public class server extends Thread {
                                  senderThreadGBN tmp = threads[i][j];
                                  threads[i][j] = new senderThreadGBN(server, tmp.getAddr(), tmp.getPort(),
                                        tmp.getSize(), tmp.getData(), packets + j, i);
+                                 threads[i][j].start();
                               }
                            }
                            allReceived = 0;
@@ -208,7 +209,7 @@ public class server extends Thread {
                                     threads[k][j] = threads[k][j + 1];
                               }
                               threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
-                                    sizes.get(packetsList.size() - 1),
+                                    sizes.get(sizes.size() - 1),
                                     packetsList.get(packetsList.size() - 1), packets + windowSize - 1, k);
                               threads[k][windowSize - 1].start();
 
@@ -225,8 +226,8 @@ public class server extends Thread {
             break;
       }
 
-      // server.close();// we don't need it anymore
-      // System.out.println("Sending file completed closing socket.");
+       server.close();// we don't need it anymore
+       System.out.println("Sending file completed closing socket.");
 
       // stats
       int totalPacketSent = 0;

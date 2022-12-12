@@ -21,7 +21,7 @@ public class client extends Thread {
 
 		String newfilepath = dirName + "/received"; // path of new file
 		int probFail = Integer.parseInt(args[2]); // probability % of simulating fail
-		int packets = 1; // nr of packets received
+		int packets = 0; // nr of packets received
 
 		FileOutputStream FOS = new FileOutputStream(newfilepath);
 		DatagramSocket client = new DatagramSocket();
@@ -68,6 +68,8 @@ public class client extends Thread {
 					client.receive(packet);
 
 					length = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+					System.out.println("Got the size:"+length);
+
 					portR = packet.getPort();
 					addR = packet.getAddress();
 
@@ -82,7 +84,7 @@ public class client extends Thread {
 
 					if (chance < probFail) { // in case of failure (reminder probFail is provided as argument)
 
-						System.out.println("Packet " + (packets-1) + " failed to receive with " + chance + "/" + probFail
+						System.out.println("Packet " + packets+ " failed to receive with " + chance + "/" + probFail
 								+ "in client" + noProcess);
 						// add a sleep as timeout
 						try {
@@ -110,15 +112,14 @@ public class client extends Thread {
 				packet = new DatagramPacket(signal, signal.length, addR, portR);
 				client.send(packet);
 
-				System.out.println("Packet no. " + (packets-1) + " received" + " (c" + noProcess + ") " + "; !Length: "
-						+ length);
+				System.out.println("Packet no. " + packets + "sends 1 to c" +noProcess);
 				packets++;
 
 				// writing to buffer and flushing it
 				FOS.write(data, 0, length);
 				FOS.flush();
 
-				if (packets > packetsNeeded) {
+				if (packets == packetsNeeded) {
 					client.close();
 					FOS.close();
 					System.out.println("C" + noProcess
