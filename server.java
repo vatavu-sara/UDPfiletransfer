@@ -195,7 +195,6 @@ public class server extends Thread {
                               
                            }
                            allReceived = 0;
-                           break;
                         } else {
                            buffer = new byte[10];
                            buffer = Integer.toString(0).getBytes();

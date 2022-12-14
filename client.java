@@ -74,7 +74,7 @@ public class client extends Thread {
 														// confused with length tho packLen give the value of length
 
 					// reset the data buffer each time
-
+					byte[] tmp = new byte[65507];
 
 					// receive lenght of new packet
 					packet = new DatagramPacket(packetLen, packetLen.length);
@@ -89,7 +89,6 @@ public class client extends Thread {
 					packet = new DatagramPacket(tmp, length.get(length.size()-1));
 					client.receive(packet);
 
-					data.add(tmp);
 
 					// simulating a fail if chance <=probFail
 					chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
@@ -107,6 +106,8 @@ public class client extends Thread {
 						packet = new DatagramPacket(signal, signal.length, addR, portR);
 						client.send(packet);
 
+						length.remove(windowSize-1);
+
 					} else {
 						// sending the acknumber for go forward
 						signal = new byte[100];
@@ -114,6 +115,7 @@ public class client extends Thread {
 						packet = new DatagramPacket(signal, signal.length, addR, portR);
 						client.send(packet);
 
+						data.add(tmp);
 					}
 
 					//receive if all got pack 0 or not
