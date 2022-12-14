@@ -6,10 +6,10 @@ public class Launcher {
     //Parameters
     private static int NumberOfClient = 2;
     private static int port = 4444;
-    private static String file = "sara.jpg";
+    private static String file = "Docker.mp4";
     private static int maxProbFail =50;
-    private static String algo = "goBackN"; //goBackN or RDT or maybe selectiveRepeat
-    private static int windowSize = 3; 
+    private static String algo = "RDT"; //goBackN or RDT or maybe selectiveRepeat
+    private static int windowSize = 4; //windowsize for gobackn
     
     public static void main(String[] args) {
 
@@ -27,7 +27,7 @@ public class Launcher {
         client[] clients = new client[NumberOfClient];
         for(int i = 0; i < NumberOfClient; i++) {
             clients[i] = new client();
-            String[] tmp = {Integer.toString(port), Integer.toString(i), Integer.toString(r.nextInt(maxProbFail))};
+            String[] tmp = {Integer.toString(port), Integer.toString(i), Integer.toString(r.nextInt(maxProbFail)),Integer.toString(windowSize)};
             clients[i].setArgs(tmp);
             clients[i].start();
         }

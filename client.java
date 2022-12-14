@@ -9,7 +9,7 @@ public class client extends Thread {
 
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
-		if (args.length != 3) {
+		if (args.length != 4) {
 			System.out.println("Arguments not valid!(Need 3)");
 			System.exit(0);
 		}
@@ -21,6 +21,7 @@ public class client extends Thread {
 
 		int probFail = Integer.parseInt(args[2]); // probability % of simulating fail
 		int packets = 0; // nr of packets received
+		int windowSize = Integer.parseInt(args[3]);
 		long ackNumber = 1;
 
 		DatagramSocket client = new DatagramSocket();
@@ -54,31 +55,39 @@ public class client extends Thread {
 		while (true) {
 			try {
 				int chance = 100; // default chance is 100 will be overwriten because it is used
-				int length = 0; // length of the packet to be received
+				int length[] = new int[10]; // length of the packet to be received
 				Random rand = new Random(); // random for simulating failure
 				byte[] signal = new byte[10];// for signaling to the server that we received the packet or not
-				byte[] data = new byte[65507];
+				byte[][] data = new byte[windowSize][65507];
+				int index;
 				int portR = port;
 				InetAddress addR = serverName;
 
 				do {
+
 					// might also be optimized with do while but not priority at the moment
 					byte[] packetLen = new byte[10]; // packLen -> packet with the len of the other packet; not to be
 														// confused with length tho packLen give the value of length
 
-					data = new byte[65507]; // reset the data buffer each time
+					// reset the data buffer each time
+
+					//receive index in windowsize
+					packet = new DatagramPacket(packetLen, packetLen.length);
+					client.receive(packet);
+					index = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+					data[index] = new byte[65507];
 
 					// receive lenght of new packet
 					packet = new DatagramPacket(packetLen, packetLen.length);
 					client.receive(packet);
-					length = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+					length[index] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 					// System.out.println("Got the size:"+length);
 
 					portR = packet.getPort();
 					addR = packet.getAddress();
 
 					// receive packet
-					packet = new DatagramPacket(data, length);
+					packet = new DatagramPacket(data[index], length[index]);
 					client.receive(packet);
 
 					// simulating a fail if chance <=probFail
@@ -97,26 +106,31 @@ public class client extends Thread {
 						packet = new DatagramPacket(signal, signal.length, addR, portR);
 						client.send(packet);
 
-					} else {
-						break;
-					}
+					} 
+
+					//receive if all got pack 0 or not
+					rec=
+					if(rec==1) break;
+					while (rec == 0)
+					{ ....}
+					if (rec == -1) continue;
 
 				} while (true);
 
-				ackNumber += length;
+				ackNumber += length[0];
 				System.out.println("Packet no. " + packets + " sent to client" +noProcess+ "! Ack:" + ackNumber);
 
-				// sending 1 for go forward
+				// sending the acknumber for go forward
 				signal = new byte[100];
 				signal = Long.toString(ackNumber).getBytes();
 				packet = new DatagramPacket(signal, signal.length, addR, portR);
 				client.send(packet);
 
-				// System.out.println("Packet no. " + packets + "sends 1 to c" +noProcess);
+				
 				packets++;
 
-				// writing to buffer and flushing it
-				FOS.write(data, 0, length);
+				// writing to buffer the packet 0 and flushing it
+				FOS.write(data[0], 0, length[0]);
 				FOS.flush();
 
 				System.out.println("Packets received :" + packets);

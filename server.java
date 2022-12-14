@@ -157,10 +157,10 @@ public class server extends Thread {
                   {
                      System.out.println("Creating thread no " + j + " for client " + i);
                      threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
-                           packetsList.get(j), j, i);
-
+                           packetsList.get(j), j, seqNumber[i], i);
                      for(int k=0;k<=j-1;k++)  
                         threads[i][k].join();
+                     if(j>0) seqNumber[i]=threads[i][j-1].getAckNumber();
                      threads[i][j].start();
                   }
 
@@ -174,14 +174,14 @@ public class server extends Thread {
                         System.out.println("Waiting for packet " + packets + " from client " + i);
                         packetsSent[i] += threads[i][0].getNBPacketSent();
                         bytesSend[i] += threads[i][0].getNBByteSent();
-                        if (threads[i][0].getReceived() == 0) {
+                        if (threads[i][0].getAckNumber() != seqNumber[i]+sizes.get(0)) {
                            System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
                            for (int j = 0; j < windowSize; j++) {
                                  threads[i][j].join();
                                  System.out.println("Resend packet"+(packets+j));
                                  senderThreadGBN tmp = threads[i][j];
                                  threads[i][j] = new senderThreadGBN(tmp.getServer(), tmp.getAddr(), tmp.getPort(),
-                                       tmp.getSize(), tmp.getData(), packets + j, i);
+                                       tmp.getSize(), tmp.getData(), packets + j, tmp.getSeqNumber(), i);
                                  for(int k=0;k<=j-1;k++)  
                                     threads[i][k].join();
                                  threads[i][j].start();
@@ -221,7 +221,7 @@ public class server extends Thread {
                               }
                               threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
                                    size,
-                                    data, packets + windowSize - 1, k);
+                                    data, packets + windowSize - 1, seqNumber[k], k);
                               for(int j=0;j<windowSize-1;j++)  
                                     threads[k][j].join();
                               threads[k][windowSize - 1].start();
