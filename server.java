@@ -175,6 +175,12 @@ public class server extends Thread {
                         packetsSent[i] += threads[i][0].getNBPacketSent();
                         bytesSend[i] += threads[i][0].getNBByteSent();
                         if (threads[i][0].getAckNumber() != seqNumber[i]+sizes.get(0)) {
+
+                           buffer = new byte[10];
+                           buffer = Integer.toString(-1).getBytes();
+                           packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
+                           server.send(packet);
+
                            System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
                            for (int j = 0; j < windowSize; j++) {
                                  threads[i][j].join();
@@ -190,9 +196,21 @@ public class server extends Thread {
                            }
                            allReceived = 0;
                            break;
+                        } else {
+                           buffer = new byte[10];
+                           buffer = Integer.toString(0).getBytes();
+                           packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
+                           server.send(packet);
                         }
                      }
                      if (allReceived == 1) {
+
+                        for (int i = 0; i < noc; i++) {
+                           buffer = new byte[10];
+                           buffer = Integer.toString(1).getBytes();
+                           packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
+                           server.send(packet);
+                        }
 
                         System.out.println("All good for packet " + packets++);
                         packetsList.remove(0);
