@@ -9,7 +9,7 @@ public class client extends Thread {
 
 	public static void main(String[] args) throws IOException {
 		// String serverName = args[0];
-		if (args.length != 4) {
+		if (args.length != 3) {
 			System.out.println("Arguments not valid!(Need 3)");
 			System.exit(0);
 		}
@@ -21,7 +21,6 @@ public class client extends Thread {
 
 		int probFail = Integer.parseInt(args[2]); // probability % of simulating fail
 		int packets = 0; // nr of packets received
-		int windowSize = Integer.parseInt(args[3]);
 		long ackNumber = 1;
 
 		DatagramSocket client = new DatagramSocket();
@@ -78,15 +77,16 @@ public class client extends Thread {
 				// receive lenght of new packet
 				packet = new DatagramPacket(packetLen, packetLen.length);
 				client.receive(packet);
-				length =Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+				length = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 				// System.out.println("Got the size:"+length);
 
-				portR = packet.getPort();
-				addR = packet.getAddress();
-
+			
 				// receive packet
 				packet = new DatagramPacket(tmp, length);
 				client.receive(packet);
+
+				portR = packet.getPort();
+				addR = packet.getAddress();
 
 				// simulating a fail if chance <=probFail
 				chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
@@ -100,12 +100,13 @@ public class client extends Thread {
 					// add a sleep as timeout
 					//System.out.println("Packet " + packets + "NOT by received by client "+ noProcess+ "Ack:" + ackNumber);
 					// sending last good acknr for resend
-					signal = new byte[10];
+					System.out.println("Enter fail branch cl "+ noProcess +" pck"+packets);
+					signal = new byte[100];
 					signal = Long.toString(ackNumber).getBytes();
 					packet = new DatagramPacket(signal, signal.length, addR, portR);
 					client.send(packet);
-
-				} else {
+					continue;
+				} 
 
 					ackNumber += length;
 
@@ -124,7 +125,7 @@ public class client extends Thread {
 					FOS.write(tmp, 0,length);
 					FOS.flush();
 					
-							}
+							
 
 	
 				if (packets == packetsNeeded) {

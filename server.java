@@ -175,36 +175,44 @@ public class server extends Thread {
                   do {
                      allReceived = 1;
                      for (int i = 0; i < noc; i++) {
-                        threads[i][0].join();
                         System.out.println("Waiting for packet " + packets + " from client " + i);
+                        threads[i][0].join();
                         packetsSent[i] += threads[i][0].getNBPacketSent();
                         bytesSend[i] += threads[i][0].getNBByteSent();
-                        System.out.println(threads[i][0].getAckNumber() +" vs "+seqNumberExpected.get(0) );
+                        // System.out.println(threads[i][0].getAckNumber() +" vs
+                        // "+seqNumberExpected.get(0) );
                         if (threads[i][0].getAckNumber() != seqNumberExpected.get(0)) {
-
+                           try {
+                              sleep(100);// the timeout basically
+                           } catch (Exception e) {
+                              // TODO: handle exception
+                           }
                            System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
                            for (int j = 0; j < windowSize; j++) {
                               threads[i][j].join();
-                              senderThreadGBN tmp = threads[i][j];
+                              senderThreadGBN tmp = new senderThreadGBN(threads[i][j].getServer(),
+                                    threads[i][j].getAddr(), threads[i][j].getPort(),
+                                    threads[i][j].getSize(), threads[i][j].getData(), packets + j,
+                                    threads[i][j].getSeqNumber(), i);
                               threads[i][j] = new senderThreadGBN(tmp.getServer(), tmp.getAddr(), tmp.getPort(),
                                     tmp.getSize(), tmp.getData(), packets + j, tmp.getSeqNumber(), i);
-                              for (int k = 0; k <= j - 1; k++)
+                              threads[i][j].setAckNumber(tmp.getAckNumber());
+                              for (int k = 0; k <= j; k++)
                                  threads[i][k].join();
                               threads[i][j].start();
 
                            }
                            allReceived = 0;
+                           break;
                         }
                      }
                      if (allReceived == 1) {
-
                         System.out.println("All good for packet " + packets++);
                         packetsList.remove(0);
                         sizes.remove(0);
                         seqNumberExpected.remove(0);
 
-                        if (packets <= packetsNeeded - windowSize)
-                        {
+                        if (packets <= (packetsNeeded - windowSize)) {
                            byte data[] = new byte[65507];
 
                            // Generate the data used for the packet
@@ -218,26 +226,39 @@ public class server extends Thread {
 
                            packetsList.add(data);
                            sizes.add(size);
-                           seqNumber = seqNumber + sizes.get(sizes.size()-1);
+                           seqNumber = seqNumber + sizes.get(sizes.size() - 1);
                            seqNumberExpected.add(seqNumber);
+                           
+                           
+                           for (int j = 0; j < (windowSize - 1); j++)
+                           {
+                              System.out.println("HELLO DO WE REACH hhhhhhhhERE");
 
-                           for (int k = 0; k < noc; k++) {
-                              {
-                                 for (int j = 0; j < windowSize - 1; j++)
-                                    {threads[k][j] = new senderThreadGBN(threads[k][j+1].getServer(), threads[k][j+1].getAddr(), threads[k][j+1].getPort(),
-                                    threads[k][j+1].getSize(), threads[k][j+1].getData(), packets + j, threads[k][j+1].getSeqNumber(), k);
-                                    threads[k][j].setAckNumber(threads[k][j+1].getAckNumber());}
+                              for (int k = 0; k < noc; k++) {
+                                 threads[k][j + 1].join();
+                                 threads[k][j] = new senderThreadGBN(threads[k][j + 1].getServer(),
+                                       threads[k][j + 1].getAddr(), threads[k][j + 1].getPort(),
+                                       threads[k][j + 1].getSize(), threads[k][j + 1].getData(), packets + j,
+                                       threads[k][j + 1].getSeqNumber(), k);
+                                 System.out
+                                       .println("Packet " + (packets + j) + " ack:" + threads[k][j + 1].getAckNumber());
+                                 System.out.println("HELLO DO WE REACH ERE");
+
+                                 threads[k][j].setAckNumber(threads[k][j + 1].getAckNumber());
                               }
+                           }
+
+                           // System.out.println("Creating thread no "+(packets+windowSize-1)+"for client
+                           // "+k+"ack:"+seqNumber);
+                           for (int k = 0; k < noc; k++) {
+
                               threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
                                     size,
-                                    data, packets + windowSize - 1, seqNumber, k);
+                                    data, packets + windowSize - 1, seqNumber - size, k);
                               for (int j = 0; j < windowSize - 1; j++)
                                  threads[k][j].join();
-                              System.out.println("Break before new start");
+
                               threads[k][windowSize - 1].start();
-                              System.out.println("Break after new start");
-
-
                            }
                         }
                      }

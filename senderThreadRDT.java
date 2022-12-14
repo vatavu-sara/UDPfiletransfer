@@ -59,6 +59,12 @@ public class senderThreadRDT extends Thread {
 
             byte[] buffer2 = new byte[10];
 
+            //sending the seq number
+            buffer2 = Long.toString(seqNumber).getBytes();
+            packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
+            server.send(packetLength);
+            buffer2 = new byte[10];
+            
             // sending the packet length
             buffer2 = Integer.toString(size).getBytes();
             packetLength = new DatagramPacket(buffer2, buffer2.length,status.getAddress(),status.getPort());
