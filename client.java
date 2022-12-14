@@ -2,10 +2,7 @@
 
 import java.net.*;
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Random;
-
-import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 public class client extends Thread {
 	private String[] args;
@@ -55,99 +52,81 @@ public class client extends Thread {
 
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
-		ArrayList<byte[]> data = new ArrayList<byte[]>(windowSize);
-		ArrayList<Integer> length= new ArrayList<Integer>(windowSize); // length of the packet to be received
+		int length; // length of the packet to be received
 
 		while (true) {
 			try {
 				int chance = 100; // default chance is 100 will be overwriten because it is used
-				
+				long seqNr;
 				Random rand = new Random(); // random for simulating failure
 				byte[] signal = new byte[10];// for signaling to the server that we received the packet or not
 				int portR = port;
 				InetAddress addR = serverName;
 
-				do {
+				// might also be optimized with do while but not priority at the moment
+				byte[] packetLen = new byte[10]; // packLen -> packet with the len of the other packet; not to be
+													// confused with length tho packLen give the value of length
 
-					// might also be optimized with do while but not priority at the moment
-					byte[] packetLen = new byte[10]; // packLen -> packet with the len of the other packet; not to be
-														// confused with length tho packLen give the value of length
+				// reset the data buffer each time
+				byte[] tmp = new byte[65507];
 
-					// reset the data buffer each time
-					byte[] tmp = new byte[65507];
+				// receive seqnr of new packet
+				packet = new DatagramPacket(packetLen, packetLen.length);
+				client.receive(packet);
+				seqNr = Long.parseLong(new String(packet.getData(), 0, packet.getLength()));
 
-					// receive lenght of new packet
-					packet = new DatagramPacket(packetLen, packetLen.length);
-					client.receive(packet);
-					length.add(Integer.parseInt(new String(packet.getData(), 0, packet.getLength())));
-					// System.out.println("Got the size:"+length);
+				// receive lenght of new packet
+				packet = new DatagramPacket(packetLen, packetLen.length);
+				client.receive(packet);
+				length =Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+				// System.out.println("Got the size:"+length);
 
-					portR = packet.getPort();
-					addR = packet.getAddress();
+				portR = packet.getPort();
+				addR = packet.getAddress();
 
-					// receive packet
-					packet = new DatagramPacket(tmp, length.get(length.size()-1));
-					client.receive(packet);
+				// receive packet
+				packet = new DatagramPacket(tmp, length);
+				client.receive(packet);
 
+				// simulating a fail if chance <=probFail
+				chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
 
-					// simulating a fail if chance <=probFail
-					chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
+				if (chance < probFail || seqNr != ackNumber) { // in case of failure (reminder probFail is provided as
+																// argument)
 
-					if (chance < probFail) { // in case of failure (reminder probFail is provided as argument)
+					// System.out.println("Pa"/received"cket " + packets+ " failed to receive with "
+					// + chance + "/" + probFail
+					// + "in client" + noProcess);
+					// add a sleep as timeout
+					//System.out.println("Packet " + packets + "NOT by received by client "+ noProcess+ "Ack:" + ackNumber);
+					// sending last good acknr for resend
+					signal = new byte[10];
+					signal = Long.toString(ackNumber).getBytes();
+					packet = new DatagramPacket(signal, signal.length, addR, portR);
+					client.send(packet);
 
-						// System.out.println("Pa"/received"cket " + packets+ " failed to receive with "
-						// + chance + "/" + probFail
-						// + "in client" + noProcess);
-						// add a sleep as timeout
+				} else {
 
-						// sending 0 for resend
-						signal = new byte[10];
-						signal = Long.toString(0).getBytes();
-						packet = new DatagramPacket(signal, signal.length, addR, portR);
-						client.send(packet);
+					ackNumber += length;
 
-						length.remove(windowSize-1);
+					System.out.println(
+							"Packet no. " + packets + " received by client" + noProcess + "! Ack:" + ackNumber);
 
-					} else {
-						// sending the acknumber for go forward
-						signal = new byte[100];
-						signal = Long.toString(ackNumber).getBytes();
-						packet = new DatagramPacket(signal, signal.length, addR, portR);
-						client.send(packet);
+					// sending the acknumber for go forward
+					signal = new byte[100];
+					signal = Long.toString(ackNumber).getBytes();
+					packet = new DatagramPacket(signal, signal.length, addR, portR);
+					client.send(packet);
 
-						data.add(tmp);
-					}
+					packets++;
 
-					//receive if all got pack 0 or not
+					// writing to buffer the packet 0 and flushing it
+					FOS.write(tmp, 0,length);
+					FOS.flush();
 					
-					int rec = 0;
-					do {
-						signal = new byte[1];
-						DatagramPacket p = new DatagramPacket(signal, signal.length);
-						client.receive(p);
+							}
 
-						rec = Integer.parseInt(new String(p.getData(), 0, p.getLength()));
-
-					} while (rec == 0); // wait until it's one
-
-					if(rec==1) break; //all good
-					
-					if (rec == -1) continue; //-1 means fault, try again to receive the datapacket 0
-
-				} while (true);
-
-				ackNumber += length.get(0);
-				System.out.println("Packet no. " + packets + " sent to client" +noProcess+ "! Ack:" + ackNumber);
-				
-				packets++;
-
-				// writing to buffer the packet 0 and flushing it
-				FOS.write(data.get(0), 0, length.get(0));
-				FOS.flush();
-
-				data.remove(0); length.remove(0); //remove the first one so we now deal with the next one in the list
-
-				System.out.println("Packets received :" + packets);
+	
 				if (packets == packetsNeeded) {
 					client.close();
 					FOS.close();

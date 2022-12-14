@@ -53,8 +53,14 @@ public class senderThreadGBN extends Thread {
 
             byte[] buffer2 = new byte[10];
 
+            //sending the seq number
+            buffer2 = Long.toString(seqNumber).getBytes();
+            packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
+            server.send(packetLength);
+
             // sending the packet length
            // System.out.println("Sending the size:"+size);
+            buffer2 = new byte[10];
             buffer2 = Integer.toString(size).getBytes();
             packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
             server.send(packetLength);
@@ -69,6 +75,7 @@ public class senderThreadGBN extends Thread {
             server.receive(status);
             ackNumber = Long.parseLong(new String(status.getData(), 0, status.getLength()));
 
+            if(ackNumber==seqNumber) System.out.println("Packet "+pnb+" failed to client "+cnb);
 
             packetsSent++;
             bytesSend += size;
@@ -85,6 +92,10 @@ public class senderThreadGBN extends Thread {
 
     public long getSeqNumber() {
         return seqNumber;
+    }
+
+    public void setAckNumber(long ackNumber) {
+        this.ackNumber = ackNumber;
     }
 
     public DatagramSocket getServer() {
