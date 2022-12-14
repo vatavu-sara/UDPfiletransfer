@@ -2,6 +2,7 @@
 
 import java.net.*;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Random;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
@@ -54,13 +55,15 @@ public class client extends Thread {
 
 		System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
+		ArrayList<byte[]> data = new ArrayList<byte[]>(windowSize);
+		ArrayList<Integer> length= new ArrayList<Integer>(windowSize); // length of the packet to be received
+
 		while (true) {
 			try {
 				int chance = 100; // default chance is 100 will be overwriten because it is used
-				int length[] = new int[10]; // length of the packet to be received
+				
 				Random rand = new Random(); // random for simulating failure
 				byte[] signal = new byte[10];// for signaling to the server that we received the packet or not
-				byte[][] data = new byte[windowSize][65507];
 				int index;
 				int portR = port;
 				InetAddress addR = serverName;
@@ -77,20 +80,23 @@ public class client extends Thread {
 					packet = new DatagramPacket(packetLen, packetLen.length);
 					client.receive(packet);
 					index = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-					data[index] = new byte[65507];
+					byte[] tmp = new byte[65507];
+					
 
 					// receive lenght of new packet
 					packet = new DatagramPacket(packetLen, packetLen.length);
 					client.receive(packet);
-					length[index] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+					length.add(Integer.parseInt(new String(packet.getData(), 0, packet.getLength())));
 					// System.out.println("Got the size:"+length);
 
 					portR = packet.getPort();
 					addR = packet.getAddress();
 
 					// receive packet
-					packet = new DatagramPacket(data[index], length[index]);
+					packet = new DatagramPacket(tmp, length.get(length.size-1)));
 					client.receive(packet);
+
+					data.add(tmp);
 
 					// simulating a fail if chance <=probFail
 					chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
@@ -108,41 +114,43 @@ public class client extends Thread {
 						packet = new DatagramPacket(signal, signal.length, addR, portR);
 						client.send(packet);
 
-					} 
+					} else {
+						// sending the acknumber for go forward
+						signal = new byte[100];
+						signal = Long.toString(ackNumber).getBytes();
+						packet = new DatagramPacket(signal, signal.length, addR, portR);
+						client.send(packet);
+
+					}
 
 					//receive if all got pack 0 or not
 					
 					int rec = 0;
 					do {
 						signal = new byte[1];
-					DatagramPacket p = new DatagramPacket(signal, signal.length);
-					client.receive(p);
+						DatagramPacket p = new DatagramPacket(signal, signal.length);
+						client.receive(p);
 
-					rec = Integer.parseInt(new String(p.getData(), 0, p.getLength()));
+						rec = Integer.parseInt(new String(p.getData(), 0, p.getLength()));
 
-					} while (rec == 0);
+					} while (rec == 0); // wait until it's one
 
-					if(rec==1) break;
+					if(rec==1) break; //all good
 					
-					if (rec == -1) continue;
+					if (rec == -1) continue; //-1 means fault, try again to receive the datapacket 0
 
 				} while (true);
 
-				ackNumber += length[0];
+				ackNumber += length.get(0);
 				System.out.println("Packet no. " + packets + " sent to client" +noProcess+ "! Ack:" + ackNumber);
-
-				// sending the acknumber for go forward
-				signal = new byte[100];
-				signal = Long.toString(ackNumber).getBytes();
-				packet = new DatagramPacket(signal, signal.length, addR, portR);
-				client.send(packet);
-
 				
 				packets++;
 
 				// writing to buffer the packet 0 and flushing it
-				FOS.write(data[0], 0, length[0]);
+				FOS.write(data.get(0), 0, length.get(0));
 				FOS.flush();
+
+				data.remove(0); length.remove(0); //remove the first one so we now deal with the next one in the list
 
 				System.out.println("Packets received :" + packets);
 				if (packets == packetsNeeded) {
