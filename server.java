@@ -49,7 +49,7 @@ public class server extends Thread {
       // sending acknowledge we are connected to all clients
       for (int i = 0; i < noc; i++) {
          buffer = new byte[10];
-         buffer = Integer.toString(1).getBytes();
+         buffer = fileName.getBytes();
          packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
          server.send(packet);
       }
@@ -72,9 +72,9 @@ public class server extends Thread {
       }
       switch (algorithm) {
          case "RDT":
+         System.out.println("Reliable Data Transfer 3.0 method chosen!");
             while (packets < packetsNeeded) {
                try {
-                  System.out.println("Reliable Data Transfer 3.0 method chosen!");
                   // sending data in packets of 65507
                   byte data[] = new byte[65507];
 
@@ -104,8 +104,8 @@ public class server extends Thread {
                   }
 
                   packets++;
-                  // System.out.println("All clients have received the packet "+ (packets) +
-                  // "\n");
+                  System.out.println("All clients have received the packet "+ (packets) +
+                   "\n");
 
                } catch (SocketTimeoutException s) {
                   System.out.println("Socket timed out!");
@@ -121,9 +121,9 @@ public class server extends Thread {
             break;
          case "goBackN":
             try {
-               System.out.println("Go-back-N method chosen! Window size:" + windowSize);
                if (windowSize > packetsNeeded)
                   windowSize = packetsNeeded;
+               System.out.println("Go-back-N method chosen! Window size:" + windowSize);
 
                // creating the N packets' data list
                ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
@@ -149,11 +149,14 @@ public class server extends Thread {
                senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
                for (int j = 0; j < windowSize; j++)
                   for (int i = 0; i < noc; i++)
-                  // create a new thread and start it
+                  // create a new thread for the first N packets for each client and start it
                   {
                      System.out.println("Creating thread no " + j + " for client " + i);
                      threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
-                           packetsList.get(j), packets + j, i);
+                           packetsList.get(j), j, i);
+
+                     for(int k=0;k<=j-1;k++)  
+                        threads[i][k].join();
                      threads[i][j].start();
                   }
 
@@ -170,13 +173,16 @@ public class server extends Thread {
                         if (threads[i][0].getReceived() == 0) {
                            System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
                            for (int j = 0; j < windowSize; j++) {
-                              threads[i][j].join();
-                              if (threads[i][j].getReceived() == 0) {
+                                 threads[i][j].join();
+                                 System.out.println("Resend packet"+(packets+j));
                                  senderThreadGBN tmp = threads[i][j];
-                                 threads[i][j] = new senderThreadGBN(server, tmp.getAddr(), tmp.getPort(),
+                                 threads[i][j] = new senderThreadGBN(tmp.getServer(), tmp.getAddr(), tmp.getPort(),
                                        tmp.getSize(), tmp.getData(), packets + j, i);
+                                 for(int k=0;k<=j-1;k++)  
+                                    threads[i][k].join();
                                  threads[i][j].start();
-                              }
+                                 System.out.println("Break after start thread"+(packets+j));
+                              
                            }
                            allReceived = 0;
                            break;
@@ -203,14 +209,17 @@ public class server extends Thread {
 
                            packetsList.add(data);
                            sizes.add(size);
+
                            for (int k = 0; k < noc; k++) {
                               {
                                  for (int j = 0; j < windowSize - 1; j++)
                                     threads[k][j] = threads[k][j + 1];
                               }
                               threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
-                                    sizes.get(sizes.size() - 1),
-                                    packetsList.get(packetsList.size() - 1), packets + windowSize - 1, k);
+                                   size,
+                                    data, packets + windowSize - 1, k);
+                              for(int j=0;j<windowSize-1;j++)  
+                                    threads[k][j].join();
                               threads[k][windowSize - 1].start();
 
                            }

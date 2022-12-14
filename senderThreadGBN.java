@@ -37,7 +37,6 @@ public class senderThreadGBN extends Thread {
 
     @Override
     public void run() {
-        super.run();
 
         DatagramPacket packet = null;
         DatagramPacket packetLength= null;
@@ -46,14 +45,13 @@ public class senderThreadGBN extends Thread {
         //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
         try {
-            
         //copy past of sara's code :p with a bit of editing
         //send only once!
 
             byte[] buffer2 = new byte[10];
 
             // sending the packet length
-            System.out.println("Sending the size:"+size);
+           // System.out.println("Sending the size:"+size);
             buffer2 = Integer.toString(size).getBytes();
             packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
             server.send(packetLength);
@@ -67,10 +65,10 @@ public class senderThreadGBN extends Thread {
             server.receive(status);
             received = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
 
-            if(received==0)
-            System.out.println("Received should be 0 for pck "+pnb +" in c"+cnb+"\n");
-            else
-            System.out.println("Received should be 1 for pck "+pnb +" in c"+cnb+"\n");
+            // if(received==0)
+            // System.out.println("Received should be 0 for pck "+pnb +" in c"+cnb+"\n");
+            // else
+            // System.out.println("Received should be 1 for pck "+pnb +" in c"+cnb+"\n");
 
             packetsSent++;
             bytesSend += size;
@@ -84,6 +82,10 @@ public class senderThreadGBN extends Thread {
         //System.out.println("From "+Thread.currentThread()+"Packet no. " + pnb + " sent to client" +cnb+ "! Length:" + size);
         
     }    
+
+    public DatagramSocket getServer() {
+        return server;
+    }
 
     public InetAddress getAddr() {
         return addr;

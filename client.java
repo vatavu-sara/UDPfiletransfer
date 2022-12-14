@@ -19,11 +19,9 @@ public class client extends Thread {
 		String dirName = "clients/client" + noProcess; // create directory client1..
 		new File(dirName).mkdir();
 
-		String newfilepath = dirName + "/received"; // path of new file
 		int probFail = Integer.parseInt(args[2]); // probability % of simulating fail
 		int packets = 0; // nr of packets received
 
-		FileOutputStream FOS = new FileOutputStream(newfilepath);
 		DatagramSocket client = new DatagramSocket();
 		DatagramPacket packet;
 
@@ -33,10 +31,16 @@ public class client extends Thread {
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
 
-		// receive ack that all clients are connected
+		buffer=new byte[100];
+
+		// receive ack that all clients are connected(as the filename)
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		System.out.println("Hello there client! All clients are now connected to the server");
+
+
+		String newfilepath = dirName + "/"+new String(packet.getData(),0,packet.getLength()); // path of new file
+		FileOutputStream FOS = new FileOutputStream(newfilepath);
 
 		// receive no of packets needed
 		buffer = new byte[10]; // fixed issue by recreating a new buffer for sending the numbers of packets
@@ -66,9 +70,8 @@ public class client extends Thread {
 					// receive lenght of new packet
 					packet = new DatagramPacket(packetLen, packetLen.length);
 					client.receive(packet);
-
 					length = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-					System.out.println("Got the size:"+length);
+					//System.out.println("Got the size:"+length);
 
 					portR = packet.getPort();
 					addR = packet.getAddress();
@@ -84,16 +87,11 @@ public class client extends Thread {
 
 					if (chance < probFail) { // in case of failure (reminder probFail is provided as argument)
 
-						System.out.println("Packet " + packets+ " failed to receive with " + chance + "/" + probFail
-								+ "in client" + noProcess);
+						//System.out.println("Pa"/received"cket " + packets+ " failed to receive with " + chance + "/" + probFail
+						//		+ "in client" + noProcess);
 						// add a sleep as timeout
-						try {
-							// sleep(100);
-						} catch (Exception e) {
-							// TODO: handle exception
-						}
+						
 						// sending 0 for resend
-
 						signal = new byte[10];
 						signal = Integer.toString(0).getBytes();
 						packet = new DatagramPacket(signal, signal.length, addR, portR);
@@ -112,7 +110,7 @@ public class client extends Thread {
 				packet = new DatagramPacket(signal, signal.length, addR, portR);
 				client.send(packet);
 
-				System.out.println("Packet no. " + packets + "sends 1 to c" +noProcess);
+				//System.out.println("Packet no. " + packets + "sends 1 to c" +noProcess);
 				packets++;
 
 				// writing to buffer and flushing it
