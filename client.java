@@ -4,6 +4,8 @@ import java.net.*;
 import java.io.*;
 import java.util.Random;
 
+import javax.rmi.ssl.SslRMIClientSocketFactory;
+
 public class client extends Thread {
 	private String[] args;
 
@@ -109,10 +111,19 @@ public class client extends Thread {
 					} 
 
 					//receive if all got pack 0 or not
-					rec=
+					
+					int rec = 0;
+					do {
+						signal = new byte[1];
+					DatagramPacket p = new DatagramPacket(signal, signal.length);
+					client.receive(p);
+
+					rec = Integer.parseInt(new String(p.getData(), 0, p.getLength()));
+
+					} while (rec == 0);
+
 					if(rec==1) break;
-					while (rec == 0)
-					{ ....}
+					
 					if (rec == -1) continue;
 
 				} while (true);
