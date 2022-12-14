@@ -30,6 +30,7 @@ public class server extends Thread {
 
       int packets = 0; // no of packets sent for each file
       long bytesSend[] = new long[noc];
+      long seqNumber[]= new long[noc];
       int packetsSent[] = new int[noc];
       byte[] buffer = new byte[10];
 
@@ -42,13 +43,14 @@ public class server extends Thread {
          cl_ports[position] = packet.getPort();
          bytesSend[position] = 0;
          packetsSent[position] = 0;
+         seqNumber[position]= 1 ;
          System.out.println("Client " + position + ": " + addresses[position] + ":" + cl_ports[position]);
 
       }
 
-      // sending acknowledge we are connected to all clients
+      // sending acknowledge we are connected to all clients(as the filename)
       for (int i = 0; i < noc; i++) {
-         buffer = new byte[10];
+         buffer = new byte[100];
          buffer = fileName.getBytes();
          packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
          server.send(packet);
@@ -92,7 +94,8 @@ public class server extends Thread {
                   senderThreadRDT[] threads = new senderThreadRDT[noc];
                   for (int i = 0; i < noc; i++) {
                      // create a new thread and start it
-                     threads[i] = new senderThreadRDT(server, addresses[i], cl_ports[i], size, data, packets, i);
+                     System.out.println("Packet "+packets+ " will be sent to client "+i+" Seq: "+seqNumber[i] +"Len:"+size);
+                     threads[i] = new senderThreadRDT(server, addresses[i], cl_ports[i], size, data, packets,seqNumber[i],i);
                      threads[i].start();
                   }
                   for (int i = 0; i < noc; i++) {
@@ -101,6 +104,7 @@ public class server extends Thread {
                      // System.out.println("finished waiting for client " + (i+1));
                      packetsSent[i] += threads[i].getNBPacketSent();
                      bytesSend[i] += threads[i].getNBByteSent();
+                     seqNumber[i] = threads[i].getAckNumber();
                   }
 
                   packets++;

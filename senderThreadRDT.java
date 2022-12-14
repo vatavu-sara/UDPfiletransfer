@@ -14,11 +14,14 @@ public class senderThreadRDT extends Thread {
     private int packetsSent = 0;
     private long bytesSend = 0;
 
+    private long seqNumber = 0;
+    private long ackNumber = 0;
+
     private int pnb;
     private int cnb;
 
 
-    senderThreadRDT(DatagramSocket server, InetAddress addr, int port, int size, byte[] data, int packetNumber, int clientNumber) {
+    senderThreadRDT(DatagramSocket server, InetAddress addr, int port, int size, byte[] data, int packetNumber,long seqNumber, int clientNumber) {
     
         this.server = server;
 
@@ -27,6 +30,8 @@ public class senderThreadRDT extends Thread {
 
         this.data = data;
         this.size = size;
+
+        this.seqNumber=seqNumber;
 
         pnb = packetNumber+1; //added +1 to start from 1 not from 0
         cnb = clientNumber; //same
@@ -44,7 +49,6 @@ public class senderThreadRDT extends Thread {
         status.setAddress(addr);
         status.setPort(port);
 
-        int received = 0;
 
         //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
@@ -64,15 +68,16 @@ public class senderThreadRDT extends Thread {
             packet = new DatagramPacket(data, size,status.getAddress(),status.getPort());
             server.send(packet);
 
+            buffer2=new byte[100];
             // receive status of packet
             status = new DatagramPacket(buffer2, buffer2.length);
             server.receive(status);
-            received = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
+            ackNumber = Long.parseLong(new String(status.getData(), 0, status.getLength()));
 
             packetsSent++;
             bytesSend += size;
 
-            if(received == 1) { //just there to send message if it fail after (could use do while but not the priority at the moment)
+            if(ackNumber == seqNumber+size) { //just there to send message if it fail after (could use do while but not the priority at the moment)
                 break;
                 
             }
@@ -85,7 +90,6 @@ public class senderThreadRDT extends Thread {
         }
 
 
-        //System.out.println("From "+Thread.currentThread()+"Packet no. " + pnb + " sent to client" +cnb+ "! Length:" + size);
         
     }    
 
@@ -97,4 +101,9 @@ public class senderThreadRDT extends Thread {
     public long getNBByteSent() {
         return bytesSend;
     }
+
+    public long getAckNumber() {
+        return ackNumber;
+    }
+    
 }
