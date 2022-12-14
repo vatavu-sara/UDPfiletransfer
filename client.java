@@ -64,7 +64,6 @@ public class client extends Thread {
 				
 				Random rand = new Random(); // random for simulating failure
 				byte[] signal = new byte[10];// for signaling to the server that we received the packet or not
-				int index;
 				int portR = port;
 				InetAddress addR = serverName;
 
@@ -76,12 +75,6 @@ public class client extends Thread {
 
 					// reset the data buffer each time
 
-					//receive index in windowsize
-					packet = new DatagramPacket(packetLen, packetLen.length);
-					client.receive(packet);
-					index = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-					byte[] tmp = new byte[65507];
-					
 
 					// receive lenght of new packet
 					packet = new DatagramPacket(packetLen, packetLen.length);
@@ -93,7 +86,7 @@ public class client extends Thread {
 					addR = packet.getAddress();
 
 					// receive packet
-					packet = new DatagramPacket(tmp, length.get(length.size-1)));
+					packet = new DatagramPacket(tmp, length.get(length.size()-1));
 					client.receive(packet);
 
 					data.add(tmp);
