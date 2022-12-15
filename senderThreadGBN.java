@@ -19,8 +19,14 @@ public class senderThreadGBN extends Thread {
     private long seqNumber = 0;
     private long ackNumber = 0;
 
+    private int statusnb;
+
     private int pnb;
     private int cnb;
+
+    public int getStatusnb() {
+        return statusnb;
+    }
 
     senderThreadGBN(DatagramSocket server, InetAddress addr, int port, int size, byte[] data, int packetNumber,long seqNumber, int clientNumber) {
     
@@ -51,6 +57,7 @@ public class senderThreadGBN extends Thread {
         //copy past of sara's code :p with a bit of editing
         //send only once!
 
+        
             byte[] buffer2 = new byte[10];
 
             //sending the seq number
@@ -69,13 +76,13 @@ public class senderThreadGBN extends Thread {
             packet = new DatagramPacket(data, size,addr,port);
             server.send(packet);
 
-            // receive status(acknumber) of packet
+            // receive status of packet
             buffer2 = new byte[100];
             status = new DatagramPacket(buffer2, buffer2.length);
             server.receive(status);
-            ackNumber = Long.parseLong(new String(status.getData(), 0, status.getLength()));
+            statusnb = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
 
-            if(ackNumber==seqNumber) System.out.println("Packet "+pnb+" failed to client "+cnb);
+            if(statusnb==0) System.out.println("Packet "+pnb+" failed to client "+cnb);
 
             packetsSent++;
             bytesSend += size;

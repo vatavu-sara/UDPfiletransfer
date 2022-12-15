@@ -48,6 +48,16 @@ public class server extends Thread {
 
       }
 
+      //send to each client (j) all the addresses 
+      for(int i=0;i<noc;i++)
+         for(int j=0;j<noc;j++)
+         {  
+            buffer=new byte[6];
+            buffer=Integer.toString(cl_ports[i]).getBytes();
+            packet= new DatagramPacket(buffer, buffer.length,addresses[j],cl_ports[j]);
+            server.send(packet);
+         }
+
       // sending acknowledge we are connected to all clients(as the filename)
       for (int i = 0; i < noc; i++) {
          buffer = new byte[100];
@@ -157,65 +167,67 @@ public class server extends Thread {
                   sizes.add(size);
                }
 
-               senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
-               for (int j = 0; j < windowSize; j++) {
-                  for (int i = 0; i < noc; i++)
-                  // create a new thread for the first N packets for each client and start it
-                  {
-                     System.out.println("Creating thread no " + j + " for client " + i);
-                     threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
-                           packetsList.get(j), j, seqNumber, i);
-                     for (int k = 0; k <= j - 1; k++)
-                        threads[i][k].join();
-                     threads[i][j].start();
-                  }
-                  seqNumber = seqNumber + sizes.get(j);
-                  seqNumberExpected.add(seqNumber);
-               }
 
                while (packets < packetsNeeded) {
-                  int allReceived;
+                  senderThreadGBN[] threads = new senderThreadGBN[noc];
 
+                  // create a new thread for each client to send packet 0 in the list
+                  for (int i = 0; i < noc; i++)
+                  {
+                     System.out.println("Creating thread no " + packets + " for client " + i);
+                     threads[i]= new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(0),
+                           packetsList.get(0), packets, seqNumber, i);
+                     //if this join loop isnt here even this crashes :)
+                     for(int j=0;j<i;j++)
+                     threads[j].join();
+                     threads[i].start();
+                  }
+                  seqNumber = seqNumber + sizes.get(0);
+                  seqNumberExpected.add(seqNumber);
+                  
+                  int allReceived;
                   do {
                      allReceived = 1;
-                     for(int j=0; j< windowSize;j++)
                      for(int i=0; i<noc ;i++)
-                     threads[i][j].join();
+                     threads[i].join();
+
                      for (int i = 0; i < noc; i++) {
                         System.out.println("Waiting for packet " + packets + " from client " + i);
-                        packetsSent[i] += threads[i][0].getNBPacketSent();
-                        bytesSend[i] += threads[i][0].getNBByteSent();
-                        // System.out.println(threads[i][0].getAckNumber() +" vs
-                        // "+seqNumberExpected.get(0) );
-                        if (threads[i][0].getAckNumber() != seqNumberExpected.get(0)) {
+                        packetsSent[i] += threads[i].getNBPacketSent();
+                        bytesSend[i] += threads[i].getNBByteSent();
+                        System.out.println(threads[i].getStatusnb());
+                        if (threads[i].getStatusnb() != 1) {
                            try {
                               sleep(100);// the timeout basically
                            } catch (Exception e) {
                               // TODO: handle exception
                            }
                            System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
-                           for (int j = 0; j < windowSize; j++) {
-                        
-                              threads[i][j].join();
-                              senderThreadGBN tmp = new senderThreadGBN(threads[i][j].getServer(),
-                                    threads[i][j].getAddr(), threads[i][j].getPort(),
-                                    threads[i][j].getSize(), threads[i][j].getData(), packets + j,
-                                    threads[i][j].getSeqNumber(), i);
-                              threads[i][j] = new senderThreadGBN(tmp.getServer(), tmp.getAddr(), tmp.getPort(),
-                                    tmp.getSize(), tmp.getData(), packets + j, tmp.getSeqNumber(), i);
-                              threads[i][j].setAckNumber(tmp.getAckNumber());
-                              for (int k = 0; k <= j; k++)
-                                 threads[i][k].join();
-                              threads[i][j].start();
-
-                           }
+                              //restarting the thread basically
+                              senderThreadGBN tmp = new senderThreadGBN(threads[i].getServer(),
+                                    threads[i].getAddr(), threads[i].getPort(),
+                                    threads[i].getSize(), threads[i].getData(), packets,
+                                    threads[i].getSeqNumber(), i);
+                              threads[i] = new senderThreadGBN(tmp.getServer(), tmp.getAddr(), tmp.getPort(),
+                                    tmp.getSize(), tmp.getData(), packets, tmp.getSeqNumber(), i);
+                              //threads[i].setAckNumber(tmp.getAckNumber());
+                              threads[i].start();
+                           
                            allReceived = 0;
-                           break;
+                           break;}
                         }
                         
-                     }
+                     
                      if (allReceived == 1) {
                         System.out.println("All good for packet " + packets++);
+                        //send to all clients we good
+                        for (int i = 0; i < noc; i++) {
+                           buffer = new byte[2];
+                           buffer = Integer.toString(1).getBytes();
+                           packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
+                           server.send(packet);
+                        }
+
                         packetsList.remove(0);
                         sizes.remove(0);
                         seqNumberExpected.remove(0);
@@ -223,7 +235,7 @@ public class server extends Thread {
                         if (packets <= (packetsNeeded - windowSize)) {
                            byte data[] = new byte[65507];
 
-                           // Generate the data used for the packet
+                           // Generate the data used for the next packet
                            int size = 0;
                            while (size < 65507 && fis.available() != 0) {
                               data[size] = (byte) fis.read();
@@ -232,43 +244,19 @@ public class server extends Thread {
                            if (size != 65507)
                               size--;
 
+         
+
                            packetsList.add(data);
                            sizes.add(size);
                            seqNumber = seqNumber + sizes.get(sizes.size() - 1);
                            seqNumberExpected.add(seqNumber);
                            
-                           System.out.println(windowSize);
-                           for (int j = 0; j < (windowSize - 1); j++)
-                           {
-      
-
-                             for (int k = 0; k < noc; k++) {
-                                 threads[k][j + 1].join();
-                                 threads[k][j] = new senderThreadGBN(threads[k][j + 1].getServer(),
-                                       threads[k][j + 1].getAddr(), threads[k][j + 1].getPort(),
-                                       threads[k][j + 1].getSize(), threads[k][j + 1].getData(), packets + j,
-                                       threads[k][j + 1].getSeqNumber(), k);
-                                 // System.out
-                                 //       .println("Packet " + (packets + j) + " ack:" + threads[k][j + 1].getAckNumber());
-                          
-                                 threads[k][j].setAckNumber(threads[k][j + 1].getAckNumber());
-                              }
+                     
                            }
 
-                           // System.out.println("Creating thread no "+(packets+windowSize-1)+"for client
-                           // "+k+"ack:"+seqNumber);
-                           for (int k = 0; k < noc; k++) {
-
-                              threads[k][windowSize - 1] = new senderThreadGBN(server, addresses[k], cl_ports[k],
-                                    size,
-                                    data, packets + windowSize - 1, seqNumber - size, k);
-                              for (int j = 0; j < windowSize - 1; j++)
-                                 threads[k][j].join();
-
-                              threads[k][windowSize - 1].start();
-                           }
+   
                         }
-                     }
+                     
 
                   } while (allReceived == 0);
 
@@ -279,42 +267,39 @@ public class server extends Thread {
             break;
       }
 
-      server.close();// we don't need it anymore
-      System.out.println("Sending file completed closing socket.");
+   server.close();// we don't need it anymore
+   System.out.println("Sending file completed closing socket.");
 
-      // stats
-      int totalPacketSent = 0;
-      for (int i : packetsSent) {
-         totalPacketSent += i;
-      }
+   // stats
+   int totalPacketSent = 0;for(
+   int i:packetsSent)
+   {
+      totalPacketSent += i;
+   }
 
-      long totalByteSent = 0;
-      for (long i : bytesSend) {
-         totalByteSent += i;
-      }
+   long totalByteSent = 0;for(
+   long i:bytesSend)
+   {
+      totalByteSent += i;
+   }
 
-      finish = Instant.now();
-      FileOutputStream stream = new FileOutputStream("stats");
-      Duration elapsed = Duration.between(start, finish);
-      stream.write("\nStats :\n\tGlobal :\n".getBytes());
-      stream.write(("\t\t Time elapsed: m:" + elapsed.toMinutes() + " s:" + elapsed.toSeconds() % 60 + " ms:"
-            + elapsed.toMillis() % 1000 + "\n").getBytes());
-      stream.write(("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent + "\n").getBytes());
-      stream.write(("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent + " "
-            + Launcher.byteToPrefixByte(totalByteSent) + "\n").getBytes());
+   finish=Instant.now();
+   FileOutputStream stream = new FileOutputStream("stats");
+   Duration elapsed = Duration.between(start,
+         finish);stream.write("\nStats :\n\tGlobal :\n".getBytes());stream.write(("\t\t Time elapsed: m:"+elapsed.toMinutes()+" s:"+elapsed.toSeconds()%60+" ms:"+elapsed.toMillis()%1000+"\n").getBytes());stream.write(("\t\t- Total packet sent to all ("+noc+") clients : "+totalPacketSent+"\n").getBytes());stream.write(("\t\t- Total byte sent to all ("+noc+") clients : "+totalByteSent+" "+Launcher.byteToPrefixByte(totalByteSent)+"\n").getBytes());
 
-      stream.write("\n\tBy client :\n".getBytes());
-      for (int i = 0; i < noc; i++) {
-         float estimatedProbFail = (1 - ((float) packetsNeeded / packetsSent[i])) * 100;
-         stream.write(("\t\t- Client no " + i + ":\n").getBytes());
-         stream.write(("\t\t\t- Packets sent : " + packetsSent[i] + "\n").getBytes());
-         stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " + Launcher.byteToPrefixByte(bytesSend[i]) + "\n")
-               .getBytes());
-         stream.write(("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail + "\n").getBytes());
-      }
+   stream.write("\n\tBy client :\n".getBytes());for(
+   int i = 0;i<noc;i++)
+   {
+      float estimatedProbFail = (1 - ((float) packetsNeeded / packetsSent[i])) * 100;
+      stream.write(("\t\t- Client no " + i + ":\n").getBytes());
+      stream.write(("\t\t\t- Packets sent : " + packetsSent[i] + "\n").getBytes());
+      stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " + Launcher.byteToPrefixByte(bytesSend[i]) + "\n")
+            .getBytes());
+      stream.write(("\t\t\t- Estimated Probability of Faillure : " + estimatedProbFail + "\n").getBytes());
+   }
 
-      stream.close();
-      System.out.println("You can find statistical report in ./stats");
+   stream.close();System.out.println("You can find statistical report in ./stats");
 
    }
 
