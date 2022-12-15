@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.time.Instant;
 import java.util.ArrayList;
+
 import java.time.Duration;
 
 public class server extends Thread {
@@ -97,6 +98,9 @@ public class server extends Thread {
                            "Packet " + packets + " will be sent to client " + i + " Seq: " + seqNumber + "Len:" + size);
                      threads[i] = new senderThreadRDT(server, addresses[i], cl_ports[i], size, data, packets, seqNumber,
                            i);
+                     //if this join loop isnt here even this crashes :)
+                     for(int j=0;j<i;j++)
+                     threads[j].join();
                      threads[i].start();
                   }
                   for (int i = 0; i < noc; i++) {
@@ -108,8 +112,8 @@ public class server extends Thread {
                      seqNumber = threads[i].getAckNumber();
                   }
 
-                  packets++;
-                  System.out.println("All clients have received the packet " + (packets) +
+                  
+                  System.out.println("All clients have received the packet " + (packets++) +
                         "\n");
 
                } catch (SocketTimeoutException s) {
@@ -174,9 +178,11 @@ public class server extends Thread {
 
                   do {
                      allReceived = 1;
+                     for(int j=0; j< windowSize;j++)
+                     for(int i=0; i<noc ;i++)
+                     threads[i][j].join();
                      for (int i = 0; i < noc; i++) {
                         System.out.println("Waiting for packet " + packets + " from client " + i);
-                        threads[i][0].join();
                         packetsSent[i] += threads[i][0].getNBPacketSent();
                         bytesSend[i] += threads[i][0].getNBByteSent();
                         // System.out.println(threads[i][0].getAckNumber() +" vs
@@ -189,6 +195,7 @@ public class server extends Thread {
                            }
                            System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
                            for (int j = 0; j < windowSize; j++) {
+                        
                               threads[i][j].join();
                               senderThreadGBN tmp = new senderThreadGBN(threads[i][j].getServer(),
                                     threads[i][j].getAddr(), threads[i][j].getPort(),
@@ -205,6 +212,7 @@ public class server extends Thread {
                            allReceived = 0;
                            break;
                         }
+                        
                      }
                      if (allReceived == 1) {
                         System.out.println("All good for packet " + packets++);
@@ -229,21 +237,20 @@ public class server extends Thread {
                            seqNumber = seqNumber + sizes.get(sizes.size() - 1);
                            seqNumberExpected.add(seqNumber);
                            
-                           
+                           System.out.println(windowSize);
                            for (int j = 0; j < (windowSize - 1); j++)
                            {
-                              System.out.println("HELLO DO WE REACH hhhhhhhhERE");
+      
 
-                              for (int k = 0; k < noc; k++) {
+                             for (int k = 0; k < noc; k++) {
                                  threads[k][j + 1].join();
                                  threads[k][j] = new senderThreadGBN(threads[k][j + 1].getServer(),
                                        threads[k][j + 1].getAddr(), threads[k][j + 1].getPort(),
                                        threads[k][j + 1].getSize(), threads[k][j + 1].getData(), packets + j,
                                        threads[k][j + 1].getSeqNumber(), k);
-                                 System.out
-                                       .println("Packet " + (packets + j) + " ack:" + threads[k][j + 1].getAckNumber());
-                                 System.out.println("HELLO DO WE REACH ERE");
-
+                                 // System.out
+                                 //       .println("Packet " + (packets + j) + " ack:" + threads[k][j + 1].getAckNumber());
+                          
                                  threads[k][j].setAckNumber(threads[k][j + 1].getAckNumber());
                               }
                            }

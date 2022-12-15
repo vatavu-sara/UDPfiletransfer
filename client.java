@@ -100,7 +100,6 @@ public class client extends Thread {
 					// add a sleep as timeout
 					//System.out.println("Packet " + packets + "NOT by received by client "+ noProcess+ "Ack:" + ackNumber);
 					// sending last good acknr for resend
-					System.out.println("Enter fail branch cl "+ noProcess +" pck"+packets);
 					signal = new byte[100];
 					signal = Long.toString(ackNumber).getBytes();
 					packet = new DatagramPacket(signal, signal.length, addR, portR);
