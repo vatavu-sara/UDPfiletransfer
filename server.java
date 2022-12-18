@@ -7,6 +7,8 @@ import java.util.ArrayList;
 
 import java.time.Duration;
 
+@ SuppressWarnings("unused")
+
 public class server extends Thread {
    private String[] args;
 
@@ -124,8 +126,8 @@ public class server extends Thread {
                      seqNumber = threads[i].getAckNumber();
                   }
 
-                  System.out.println("All clients have received the packet " + (packets++) +
-                        "\n");
+                  // System.out.println("All clients have received the packet " + (packets++) +
+                  //       "\n");
 
                } catch (SocketTimeoutException s) {
                   System.out.println("Socket timed out!");
@@ -145,7 +147,7 @@ public class server extends Thread {
 
                if (windowSize > packetsNeeded)
                   windowSize = packetsNeeded;
-               System.out.println("Go-back-N method chosen! Window size:" + windowSize);
+               //System.out.println("Go-back-N method chosen! Window size:" + windowSize);
 
                // creating the N packets' data list
                ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
@@ -163,7 +165,7 @@ public class server extends Thread {
                   if (size != 65507)
                      size--;
 
-                  System.out.println("Packet " + i + "added to arraylist");
+                  //System.out.println("Packet " + i + "added to arraylist");
                   packetsList.add(data);
                   sizes.add(size);
                }
@@ -173,7 +175,7 @@ public class server extends Thread {
 
                   // create a new thread for each client to send packet 0 in the list
                   for (int i = 0; i < noc; i++) {
-                     System.out.println("Creating thread no " + packets + " for client " + i);
+                     //System.out.println("Creating thread no " + packets + " for client " + i);
                      threads[i] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(0),
                            packetsList.get(0), packets, seqNumber, i);
                      // if this join loop isnt here even this crashes :)
@@ -191,17 +193,16 @@ public class server extends Thread {
                         threads[i].join();
 
                      for (int i = 0; i < noc; i++) {
-                        System.out.println("Waiting for packet " + packets + " from client " + i);
+                        //System.out.println("Waiting for packet " + packets + " from client " + i);
                         packetsSent[i] += threads[i].getNBPacketSent();
                         bytesSend[i] += threads[i].getNBByteSent();
-                        System.out.println(threads[i].getStatusnb());
                         if (threads[i].getStatusnb() != 1) {
                            try {
                               sleep(100);// the timeout basically
                            } catch (Exception e) {
                               // TODO: handle exception
                            }
-                           System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
+                           //System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
                            // restarting the thread basically
                            senderThreadGBN tmp = new senderThreadGBN(threads[i].getServer(),
                                  threads[i].getAddr(), threads[i].getPort(),
@@ -218,7 +219,8 @@ public class server extends Thread {
                      }
 
                      if (allReceived == 1) {
-                        System.out.println("All good for packet " + packets++);
+                        //System.out.println("All good for packet " + packets++);
+                        packets++;
                         // send to all clients we good
                         for (int i = 0; i < noc; i++) {
                            buffer = new byte[2];
