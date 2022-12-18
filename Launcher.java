@@ -4,7 +4,7 @@ import java.util.Random;
 public class Launcher {
 
     //Parameters
-    private static int NumberOfClient = 2;
+    private static int NumberOfClient = 4;
     private static int port = 4444;
     private static String file = "Docker.mp4";
     private static int maxProbFail =40;

@@ -22,6 +22,7 @@ public class client extends Thread {
 
 		int probFail = Integer.parseInt(args[3]); // probability % of simulating fail
 		int packets = 0; // nr of packets received
+		long bytesReceived=0;
 		long ackNumber = 1;
 
 		DatagramSocket client = new DatagramSocket();
@@ -121,15 +122,18 @@ public class client extends Thread {
 				signal = Integer.toString(1).getBytes();
 				packet = new DatagramPacket(signal, signal.length, serverName, portR);
 				client.send(packet);
-	
+				
+
 				//waiting for signal from server that all is good
+				int s;
 				do{
 				packetLen = new byte[2];
 				packet = new DatagramPacket(packetLen, packetLen.length);
 				client.receive(packet);
-				length = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-				}while(length==0);
+				 s= Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+				}while(s==0);
 
+				bytesReceived+=length;
 				packets++;
 
 				// writing to buffer the packet 0 and flushing it
@@ -137,6 +141,12 @@ public class client extends Thread {
 				FOS.flush();
 
 				if (packets == packetsNeeded) {
+					//sending nr of bytes received(real of the file)
+					signal = new byte[100];
+					signal = Long.toString(bytesReceived).getBytes();
+					packet = new DatagramPacket(signal, signal.length, serverName, port);
+					client.send(packet);
+					
 					client.close();
 					FOS.close();
 					System.out.println("C" + noProcess
