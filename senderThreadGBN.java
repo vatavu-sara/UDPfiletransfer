@@ -6,6 +6,8 @@ import java.net.InetAddress;
 //copy paste of original thread but with modifications
 public class senderThreadGBN extends Thread {
     private DatagramSocket server;
+    DatagramPacket status;
+
 
     private InetAddress addr; //the addres to send to
     private int port; // the port to send to
@@ -17,7 +19,6 @@ public class senderThreadGBN extends Thread {
     private long bytesSend = 0;
 
     private long seqNumber = 0;
-    private long ackNumber = 0;
 
     private int statusnb;
 
@@ -49,7 +50,11 @@ public class senderThreadGBN extends Thread {
 
         DatagramPacket packet = null;
         DatagramPacket packetLength= null;
-        DatagramPacket status=new DatagramPacket(data, 10);
+        status=new DatagramPacket(data, 10);
+
+        //idk maybe fix
+        status.setAddress(addr);
+        status.setPort(port);
 
         //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
@@ -58,35 +63,26 @@ public class senderThreadGBN extends Thread {
         //send only once!
 
         
-            byte[] buffer2 = new byte[10];
+            byte[] buffer2 =  Long.toString(seqNumber).getBytes();
+            byte[] packetData= new byte[65507];
 
-            //sending the seq number
-            buffer2 = Long.toString(seqNumber).getBytes();
-            packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
-            server.send(packetLength);
-
-            // sending the packet length
-           // System.out.println("Sending the size:"+size);
-            buffer2 = new byte[10];
-            buffer2 = Integer.toString(size).getBytes();
-            packetLength = new DatagramPacket(buffer2, buffer2.length,addr,port);
-            server.send(packetLength);
+            //adding the seq no to the packet data
+            for(int i=0;i<buffer2.length;i++)
+                packetData[i]= buffer2[i];
             
+            //if its length <10 the rest will be _
+            for(int i=buffer2.length;i<10;i++)
+                packetData[i]='_';
+        
+            //copying all the file data to the packet
+            System.arraycopy(data, 0, packetData, 10, data.length);
+    
             // sending the packet itself
-            packet = new DatagramPacket(data, size,addr,port);
+            packet = new DatagramPacket(packetData, packetData.length,status.getAddress(),status.getPort());
             server.send(packet);
-
-            // receive status of packet
-            buffer2 = new byte[100];
-            status = new DatagramPacket(buffer2, buffer2.length);
-            server.receive(status);
-            statusnb = Integer.parseInt(new String(status.getData(), 0, status.getLength()));
-
-            if(statusnb==0) System.out.println("Packet "+pnb+" failed to client "+cnb);
 
             packetsSent++;
             bytesSend += size;
-
                 
         } catch (Exception e) {
             e.printStackTrace();
@@ -97,12 +93,10 @@ public class senderThreadGBN extends Thread {
         
     }    
 
+    
+
     public long getSeqNumber() {
         return seqNumber;
-    }
-
-    public void setAckNumber(long ackNumber) {
-        this.ackNumber = ackNumber;
     }
 
     public DatagramSocket getServer() {
@@ -132,9 +126,5 @@ public class senderThreadGBN extends Thread {
 
     public long getNBByteSent() {
         return bytesSend;
-    }
-
-    public long getAckNumber() {
-        return ackNumber;
     }
 }

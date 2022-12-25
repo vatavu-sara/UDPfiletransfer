@@ -7,12 +7,16 @@ import java.util.ArrayList;
 
 import java.time.Duration;
 
-@ SuppressWarnings("unused")
+@SuppressWarnings("unused")
 
 public class server extends Thread {
    private String[] args;
+   static int MAX_PKT_SZ = 65507; // in bytes
+   static int MAX_DATA_SZ = MAX_PKT_SZ - 10; // 10 being the size reserverd for the packet number
+   int size; // size of the newly read bite of the file, if zero it mean we arrived at the
+             // end of the file.
 
-   public static void main(String[] args) throws IOException {
+   public void main(String[] args) throws IOException {
       if (args.length != 5) {
          System.out.println("Arguments not valid!(Need 2)");
          System.exit(0);
@@ -46,7 +50,7 @@ public class server extends Thread {
          int position = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
          addresses[position] = packet.getAddress();
          cl_ports[position] = packet.getPort();
-         bytesReceived[position]=0;
+         bytesReceived[position] = 0;
          bytesSend[position] = 0;
          packetsSent[position] = 0;
          System.out.println("Client " + position + ": " + addresses[position] + ":" + cl_ports[position]);
@@ -75,9 +79,11 @@ public class server extends Thread {
       // making file input stream(to read from it)
       FileInputStream fis = new FileInputStream(new File(fileName));
 
-      // max 65507 ?
-      int packetsNeeded = fis.available() / 65507 + 1; // nr of packets needed
-      System.out.println("Needs " + packetsNeeded + " packets to transmit " + fileName + "\n\n");
+      // max 65507 but 10 are seqnr/acknr
+
+      int packetsNeeded = fis.available() / MAX_DATA_SZ + 1; // nr of packets needed
+      System.out.println("File (" + fis.available() + " bytes) Needs " + packetsNeeded + " packets to transmit "
+            + fileName + "\n\n");
 
       for (int i = 0; i < noc; i++) {
          // send nr of packets needed
@@ -95,13 +101,8 @@ public class server extends Thread {
                   byte data[] = new byte[65507];
 
                   // Generate the data used for the packet
-                  int size = 0;
-                  while (size < 65507 && fis.available() != 0) {
-                     data[size] = (byte) fis.read();
-                     size++;
-                  }
-                  if (size != 65507)
-                     size--;
+                  size = 0;
+                  data = readFile(fis);
 
                   // array of senderThread (thread that manage the process of sending the file to
                   // a client and resending if necessary)
@@ -127,7 +128,7 @@ public class server extends Thread {
                   }
 
                   // System.out.println("All clients have received the packet " + (packets++) +
-                  //       "\n");
+                  // "\n");
 
                } catch (SocketTimeoutException s) {
                   System.out.println("Socket timed out!");
@@ -143,140 +144,157 @@ public class server extends Thread {
             break;
          case "goBackN":
             try {
-               ArrayList<Long> seqNumberExpected = new ArrayList<Long>(windowSize);
+
+               /*
+                * steps :
+                * V - Send packet win to winsz
+                * V - wait for evey thread to have finish sending and receiving/timing out
+                * v - Check who hasn't received what and get the lowest packet that hasn't been
+                * send
+                * v - add ordinal number of packet that were succesfully sent to steps (can be
+                * 0...) and advance the window size from that amount
+                * v - resend the whole window size
+                */
+
+               ArrayList<Long> ackNumberExpected = new ArrayList<Long>(windowSize);
 
                if (windowSize > packetsNeeded)
                   windowSize = packetsNeeded;
-               //System.out.println("Go-back-N method chosen! Window size:" + windowSize);
+               // System.out.println("Go-back-N method chosen! Window size:" + windowSize);
 
                // creating the N packets' data list
                ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
                ArrayList<Integer> sizes = new ArrayList<Integer>(windowSize);
+               long ackNumbers[][] = new long[noc][windowSize];
+               long tmpseq = 1;
                for (int i = 0; i < windowSize; i++) {
                   // sending data in packets of 65507
-                  byte data[] = new byte[65507];
+                  byte data[] = new byte[MAX_DATA_SZ];
 
                   // Generate the data used for the packet
-                  int size = 0;
-                  while (size < 65507 && fis.available() != 0) {
-                     data[size] = (byte) fis.read();
-                     size++;
-                  }
-                  if (size != 65507)
-                     size--;
+                  size = 0;
+                  data = readFile(fis);
 
-                  //System.out.println("Packet " + i + "added to arraylist");
+                  System.out.println("Packet " + i + "added to arraylist size:" + size);
                   packetsList.add(data);
                   sizes.add(size);
+                  tmpseq = tmpseq + size;
+                  ackNumberExpected.add(tmpseq);
                }
 
                while (packets < packetsNeeded) {
-                  senderThreadGBN[] threads = new senderThreadGBN[noc];
+                  senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
+                  receiverStatusThread[][] rcvthreads = new receiverStatusThread[noc][windowSize];
 
-                  // create a new thread for each client to send packet 0 in the list
-                  for (int i = 0; i < noc; i++) {
-                     //System.out.println("Creating thread no " + packets + " for client " + i);
-                     threads[i] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(0),
-                           packetsList.get(0), packets, seqNumber, i);
-                     // if this join loop isnt here even this crashes :)
-                     for (int j = 0; j < i; j++)
-                        threads[j].join();
-                     threads[i].start();
-                  }
-                  seqNumber = seqNumber + sizes.get(0);
-                  seqNumberExpected.add(seqNumber);
-
-                  int allReceived;
-                  do {
-                     allReceived = 1;
-                     for (int i = 0; i < noc; i++)
-                        threads[i].join();
-
+                  // create a new thread for each client to send the n packets in the list +start
+                  // sending it
+                  tmpseq = seqNumber;
+                  for (int j = 0; j < windowSize; j++) {
                      for (int i = 0; i < noc; i++) {
-                        //System.out.println("Waiting for packet " + packets + " from client " + i);
-                        packetsSent[i] += threads[i].getNBPacketSent();
-                        bytesSend[i] += threads[i].getNBByteSent();
-                        if (threads[i].getStatusnb() != 1) {
-                           try {
-                              sleep(100);// the timeout basically
-                           } catch (Exception e) {
-                              // TODO: handle exception
-                           }
-                           //System.out.println("Packet " + packets + " not received by client " + i + " Resending...");
-                           // restarting the thread basically
-                           senderThreadGBN tmp = new senderThreadGBN(threads[i].getServer(),
-                                 threads[i].getAddr(), threads[i].getPort(),
-                                 threads[i].getSize(), threads[i].getData(), packets,
-                                 threads[i].getSeqNumber(), i);
-                           threads[i] = new senderThreadGBN(tmp.getServer(), tmp.getAddr(), tmp.getPort(),
-                                 tmp.getSize(), tmp.getData(), packets, tmp.getSeqNumber(), i);
-                           // threads[i].setAckNumber(tmp.getAckNumber());
-                           threads[i].start();
+                        System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
+                        threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(0),
+                              packetsList.get(0), packets, tmpseq, i);
+                        // if this join loop isnt here even this crashes :)
+                        // for (int k = 0; k < j; k++)
+                        // threads[i][k].join();
+                        threads[i][j].start();
+                        rcvthreads[i][j] = new receiverStatusThread(server, packets, i);
+                        rcvthreads[i][j].start();
 
-                           allReceived = 0;
+                     }
+                     tmpseq += sizes.get(j);
+                  }
+
+                  for (int j = 0; j < windowSize; j++)
+                     for (int i = 0; i < noc; i++) {
+                        System.out.println("Waiting for packet " + (packets + j) + " from client " + i);
+                        threads[i][j].join();
+
+                        packetsSent[i] += threads[i][j].getNBPacketSent();
+                        bytesSend[i] += threads[i][j].getNBByteSent();
+                        rcvthreads[i][j].join();
+
+                        ackNumbers[rcvthreads[i][j].getCnb()][rcvthreads[i][j].getPnb()] = rcvthreads[i][j]
+                              .getAckNumber();
+                     }
+
+                  int restartFrom = windowSize;
+                  // now we got all ack no's so we know where every client lost the first packet
+                  for (int j = 0; j < windowSize; j++) {
+                     if (restartFrom != windowSize)
+                        break;
+                     for (int i = 0; i < noc; i++)
+                        if (ackNumbers[i][j] != ackNumberExpected.get(j)) {
+                           System.out.println("Real :" + ackNumbers[i][j] + " Expected:" + ackNumberExpected.get(j));
+                           System.out.println(
+                                 "First packet got lost at position " + j + " in the window size (client" + i);
+                           restartFrom = j;
                            break;
                         }
+                  }
+
+                  if (restartFrom != 0)
+                     System.out.println("All good for the first " + restartFrom + " packets");
+                  else
+                     System.out.println("A client lost the first packet");
+
+                  // we can get rid of the packets that went good
+
+                  for (int i = 0; i < restartFrom; i++) {
+                     System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
+                     // the seqnr of the server increses
+                     seqNumber += sizes.get(0);
+                     // we remove the first packet from the list
+                     packetsList.remove(0);
+                     // as well as the size
+                     sizes.remove(0);
+                     // as well as the expected ack
+                     ackNumberExpected.remove(0);
+                  }
+
+                  long tmpseqNumber = seqNumber;
+                  for (int i = 0; i < restartFrom; i++) {
+                     // and if there are still packets in the file we read the next one
+                     if (packets <= (packetsNeeded - windowSize)) {
+                        byte data[] = new byte[MAX_DATA_SZ];
+
+                        // Generate the data used for the next packet
+                        size = 0;
+                        data = readFile(fis);
+
+                        packetsList.add(data);
+                        sizes.add(size);
+                        tmpseqNumber += size;
+                        ackNumberExpected.add(tmpseqNumber);
                      }
-
-                     if (allReceived == 1) {
-                        //System.out.println("All good for packet " + packets++);
-                        packets++;
-                        // send to all clients we good
-                        for (int i = 0; i < noc; i++) {
-                           buffer = new byte[2];
-                           buffer = Integer.toString(1).getBytes();
-                           packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
-                           server.send(packet);
-                        }
-
-                        packetsList.remove(0);
-                        sizes.remove(0);
-                        seqNumberExpected.remove(0);
-
-                        if (packets <= (packetsNeeded - windowSize)) {
-                           byte data[] = new byte[65507];
-
-                           // Generate the data used for the next packet
-                           int size = 0;
-                           while (size < 65507 && fis.available() != 0) {
-                              data[size] = (byte) fis.read();
-                              size++;
-                           }
-                           if (size != 65507)
-                              size--;
-
-                           packetsList.add(data);
-                           sizes.add(size);
-                           seqNumber = seqNumber + sizes.get(sizes.size() - 1);
-                           seqNumberExpected.add(seqNumber);
-
-                        }
-
-                     }
-
-                  } while (allReceived == 0);
-
+                     // otherwise the windowsize decreases
+                     else
+                        windowSize--;
+                  }
                }
+
             } catch (Exception e) {
                // TODO: handle exception
             }
             break;
       }
-      //receive by all clients byresReceived
-      for (int i = 0; i < noc; i++) {
-         buffer= new byte[100];
+      // receive by all clients byresReceived
+      for (
+
+            int i = 0; i < noc; i++) {
+         buffer = new byte[100];
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);
          bytesReceived[i] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
       }
-   
+
       server.close();// we don't need it anymore
       System.out.println("Sending file completed closing socket.");
 
       // stats
       int totalPacketSent = 0;
-      
+
       for (int i : packetsSent) {
          totalPacketSent += i;
       }
@@ -298,29 +316,34 @@ public class server extends Thread {
       stream.write("\nStats :\n\tGlobal :\n".getBytes());
       stream.write(("\t\t Time elapsed: m:" + elapsed.toMinutes() + " s:" + elapsed.toSeconds() % 60 + " ms:"
             + elapsed.toMillis() % 1000 + "\n").getBytes());
-      stream.write(("\t\t- Total packet received to all (" + noc + ") clients : " + (packetsNeeded*noc) + "\n").getBytes());   
+      stream.write(
+            ("\t\t- Total packet received to all (" + noc + ") clients : " + (packetsNeeded * noc) + "\n").getBytes());
       stream.write(("\t\t- Total packet sent to all (" + noc + ") clients : " + totalPacketSent + "\n").getBytes());
-      stream.write(("\t\t- Total packet retransmitted to all (" + noc + ") clients : " + (totalPacketSent-packetsNeeded*noc) + "\n").getBytes());
-      stream.write(("\t\t- Total byte received by all (" + noc + ") clients : " + totalByteReceived + " "
-            + Launcher.byteToPrefixByte(totalByteReceived) + "\n").getBytes());
+      stream.write(("\t\t- Total packet retransmitted to all (" + noc + ") clients : "
+            + (totalPacketSent - packetsNeeded * noc) + "\n").getBytes());
+      stream.write(("\t\t- Total byte received by all (" + noc + ") clients : " + totalByteReceived + " " +
+
+            byteToPrefixByte(totalByteReceived) + "\n").getBytes());
       stream.write(("\t\t- Total byte sent to all (" + noc + ") clients : " + totalByteSent + " "
-            + Launcher.byteToPrefixByte(totalByteSent) + "\n").getBytes());
-      stream.write(("\t\t- Total byte retransmitted to all (" + noc + ") clients : " + (totalByteSent-totalByteReceived) + " "
-            + Launcher.byteToPrefixByte(totalByteSent-totalByteReceived) + "\n").getBytes());
+            + byteToPrefixByte(totalByteSent) + "\n").getBytes());
+      stream.write(("\t\t- Total byte retransmitted to all (" + noc + ") clients : "
+            + (totalByteSent - totalByteReceived) + " "
+            + byteToPrefixByte(totalByteSent - totalByteReceived) + "\n").getBytes());
 
       stream.write("\n\tBy client :\n".getBytes());
       for (int i = 0; i < noc; i++) {
          float estimatedProbFail = (1 - ((float) packetsNeeded / packetsSent[i])) * 100;
 
          stream.write(("\t\t- Client no " + i + ":\n").getBytes());
-         stream.write(("\t\t\t- Packets received : " + packetsNeeded+ "\n").getBytes());
+         stream.write(("\t\t\t- Packets received : " + packetsNeeded + "\n").getBytes());
          stream.write(("\t\t\t- Packets sent : " + packetsSent[i] + "\n").getBytes());
-         stream.write(("\t\t\t- Packets retransmiited : " + (packetsSent[i]-packetsNeeded)+ "\n").getBytes());
-         stream.write(("\t\t\t- Bytes received : " + bytesReceived[i] + " " + Launcher.byteToPrefixByte(bytesReceived[i]) + "\n")
+         stream.write(("\t\t\t- Packets retransmiited : " + (packetsSent[i] - packetsNeeded) + "\n").getBytes());
+         stream.write(("\t\t\t- Bytes received : " + bytesReceived[i] + " " + byteToPrefixByte(bytesReceived[i]) + "\n")
                .getBytes());
-         stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " + Launcher.byteToPrefixByte(bytesSend[i]) + "\n")
+         stream.write(("\t\t\t- Bytes sent : " + bytesSend[i] + " " + byteToPrefixByte(bytesSend[i]) + "\n")
                .getBytes());
-         stream.write(("\t\t\t- Bytes retransmitted : " + (bytesSend[i]-bytesReceived[i]) + " " + Launcher.byteToPrefixByte(bytesSend[i]-bytesReceived[i]) + "\n")
+         stream.write(("\t\t\t- Bytes retransmitted : " + (bytesSend[i] - bytesReceived[i]) + " "
+               + byteToPrefixByte(bytesSend[i] - bytesReceived[i]) + "\n")
                .getBytes());
          stream.write(("\t\t\t- Estimated Probability of Failure : " + estimatedProbFail + "\n").getBytes());
       }
@@ -345,5 +368,44 @@ public class server extends Thread {
          // TODO Auto-generated catch block
          e.printStackTrace();
       }
+
+   }
+
+   private byte[] readFile(FileInputStream fis) throws IOException {
+      /*
+       * Reads on packet (at most MAX_DATA_SZ bytes) in FIS
+       */
+      byte[] data = new byte[MAX_DATA_SZ];
+
+      size = 0;
+      while (size < MAX_DATA_SZ && fis.available() != 0) {
+         data[size] = (byte) fis.read();
+         size++;
+      }
+      if (size != MAX_DATA_SZ) {
+         size--;
+      }
+
+      return data;
+
+   }
+
+   public static String byteToPrefixByte(long n) {
+      char[] prefixes = { 'K', 'M', 'G', 'T' };
+      int pref = -1;
+
+      String formated = "(~";
+
+      while (n > 1000 && pref <= 3) {
+         n = n / 1000;
+
+         pref++;
+      }
+
+      if (pref == -1) {
+         return "";
+      }
+      formated += Long.toString(n) + prefixes[pref] + "B" + ")";
+      return formated;
    }
 }
