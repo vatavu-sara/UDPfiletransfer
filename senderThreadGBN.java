@@ -61,11 +61,12 @@ public class senderThreadGBN extends Thread {
         try {
         //copy past of sara's code :p with a bit of editing
         //send only once!
-
         
             byte[] buffer2 =  Long.toString(seqNumber).getBytes();
+            byte [] sizeBytes= Integer.toString(size).getBytes();
             byte[] packetData= new byte[65507];
 
+            System.out.println("size:"+size);            
             //adding the seq no to the packet data
             for(int i=0;i<buffer2.length;i++)
                 packetData[i]= buffer2[i];
@@ -73,9 +74,13 @@ public class senderThreadGBN extends Thread {
             //if its length <10 the rest will be _
             for(int i=buffer2.length;i<10;i++)
                 packetData[i]='_';
-        
+
+            //adding the size
+            for(int i=0;i<sizeBytes.length;i++)
+                packetData[i+10]= sizeBytes[i];
+
             //copying all the file data to the packet
-            System.arraycopy(data, 0, packetData, 10, data.length);
+            System.arraycopy(data, 0, packetData, 15, data.length);
     
             // sending the packet itself
             packet = new DatagramPacket(packetData, packetData.length,status.getAddress(),status.getPort());

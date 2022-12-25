@@ -12,7 +12,7 @@ import java.time.Duration;
 public class server extends Thread {
    private String[] args;
    static int MAX_PKT_SZ = 65507; // in bytes
-   static int MAX_DATA_SZ = MAX_PKT_SZ - 10; // 10 being the size reserverd for the packet number
+   static int MAX_DATA_SZ = MAX_PKT_SZ - 15; // 10 being the size reserverd for the seq nr and 5 for the size
    int size; // size of the newly read bite of the file, if zero it mean we arrived at the
              // end of the file.
 
@@ -192,8 +192,8 @@ public class server extends Thread {
                   for (int j = 0; j < windowSize; j++) {
                      for (int i = 0; i < noc; i++) {
                         System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
-                        threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(0),
-                              packetsList.get(0), packets, tmpseq, i);
+                        threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
+                              packetsList.get(j), packets, tmpseq, i);
                         // if this join loop isnt here even this crashes :)
                         // for (int k = 0; k < j; k++)
                         // threads[i][k].join();
@@ -209,7 +209,6 @@ public class server extends Thread {
                      for (int i = 0; i < noc; i++) {
                         System.out.println("Waiting for packet " + (packets + j) + " from client " + i);
                         threads[i][j].join();
-
                         packetsSent[i] += threads[i][j].getNBPacketSent();
                         bytesSend[i] += threads[i][j].getNBByteSent();
                         rcvthreads[i][j].join();
@@ -278,14 +277,22 @@ public class server extends Thread {
             }
             break;
       }
-      // receive by all clients byresReceived
-      for (
 
-            int i = 0; i < noc; i++) {
+      // receive by all clients byresReceived
+      for (int i = 0; i < noc; i++) {
+
+         //send ok that all finished
+         byte[] signal = new byte[1];
+			signal = Integer.toString(1).getBytes();
+			packet = new DatagramPacket(signal, signal.length, addresses[i], cl_ports[i]);
+			server.send(packet);
+
+         //receive nr of bytes
          buffer = new byte[100];
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);
-         bytesReceived[i] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+         bytesReceived[i] = Long.parseLong(new String(packet.getData(), 0, packet.getLength()));
+         System.out.println(bytesReceived[i]);
 
       }
 
@@ -306,7 +313,7 @@ public class server extends Thread {
 
       long totalByteReceived = 0;
       for (long i : bytesReceived) {
-         totalByteSent += i;
+         totalByteReceived += i;
       }
 
       finish = Instant.now();

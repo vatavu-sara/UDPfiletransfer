@@ -77,12 +77,19 @@ public class client extends Thread {
 				packet = new DatagramPacket(data, data.length);
 				client.receive(packet);
 
+
+				//receive seqnr
 				for (int i = 0; i < 10 && packet.getData()[i] != '_'; i++)
 					seqbytes[i] = packet.getData()[i];
-
 				seqNr = Long.parseLong(new String(seqbytes).trim());
 
-				System.out.println("Packet " + packets + "[Before addition]Seq : " + seqNr + "Ack: " + ackNumber);
+				//receive size
+				byte sizeBytes[] = new byte[5];
+				for (int i = 10; i < 15 && packet.getData()[i] != '_'; i++)
+					sizeBytes[i-10] = packet.getData()[i];
+				int size= Integer.parseInt(new String(sizeBytes).trim());
+
+				System.out.println("Packet " + packets + "[Before addition]Seq : " + seqNr + "Ack: " + ackNumber +" size:"+size);
 
 				// simulating a fail if chance <=probFail
 				chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
@@ -124,7 +131,7 @@ public class client extends Thread {
 				}
 
 				// if all is good the ack nr increases
-				ackNumber += data.length - 10;
+				ackNumber += size;
 
 				System.out.println(
 						"From client: Packet no. " + packets + " received by client" + noProcess + "!");
@@ -156,13 +163,18 @@ public class client extends Thread {
 
 				// how about we try to get rid of this !
 
-				bytesReceived += data.length;
+				bytesReceived += size;
+
 				packets++;
 				// writing to buffer the packet 0 and flushing it
-				FOS.write(data, 10, data.length - 10);
+				FOS.write(data, 15, size);
 				FOS.flush();
 
 				if (packets == packetsNeeded) {
+					//maybe wait for signal that all finished
+					packet= new DatagramPacket(buffer, 1);
+					client.receive(packet);
+
 					// sending nr of bytes received(real of the file)
 					byte[] signal = new byte[100];
 					signal = Long.toString(bytesReceived).getBytes();
@@ -172,7 +184,7 @@ public class client extends Thread {
 					client.close();
 					FOS.close();
 					System.out.println("C" + noProcess
-							+ ":Done transmiting. Socket closed\nYou may observe the resulting file in " + dirName);
+							+ ":Done transmiting.(" + bytesReceived +  "bytes) Socket closed\nYou may observe the resulting file in " + dirName);
 					break;// breaks out of the while loop as we have finished
 				}
 
