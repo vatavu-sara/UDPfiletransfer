@@ -92,6 +92,7 @@ public class server extends Thread {
          packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
          server.send(packet);
       }
+
       switch (algorithm) {
          case "RDT":
             System.out.println("Reliable Data Transfer 3.0 method chosen!");
@@ -143,78 +144,84 @@ public class server extends Thread {
             }
             break;
          case "goBackN":
-            try {
 
-               /*
-                * steps :
-                * V - Send packet win to winsz
-                * V - wait for evey thread to have finish sending and receiving/timing out
-                * v - Check who hasn't received what and get the lowest packet that hasn't been
-                * send
-                * v - add ordinal number of packet that were succesfully sent to steps (can be
-                * 0...) and advance the window size from that amount
-                * v - resend the whole window size
-                */
+            /*
+             * steps :
+             * V - Send packet win to winsz
+             * V - wait for evey thread to have finish sending and receiving/timing out
+             * v - Check who hasn't received what and get the lowest packet that hasn't been
+             * send
+             * v - add ordinal number of packet that were succesfully sent to steps (can be
+             * 0...) and advance the window size from that amount
+             * v - resend the whole window size
+             */
 
-               ArrayList<Long> ackNumberExpected = new ArrayList<Long>(windowSize);
+            ArrayList<Long> ackNumberExpected = new ArrayList<Long>(windowSize);
 
-               if (windowSize > packetsNeeded)
-                  windowSize = packetsNeeded;
-               // System.out.println("Go-back-N method chosen! Window size:" + windowSize);
+            if (windowSize > packetsNeeded)
+               windowSize = packetsNeeded;
+            // System.out.println("Go-back-N method chosen! Window size:" + windowSize);
 
-               // creating the N packets' data list
-               ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
-               ArrayList<Integer> sizes = new ArrayList<Integer>(windowSize);
-               long ackNumbers[][] = new long[noc][windowSize];
-               long tmpseq = 1;
-               for (int i = 0; i < windowSize; i++) {
-                  // sending data in packets of 65507
-                  byte data[] = new byte[MAX_DATA_SZ];
+            // creating the N packets' data list
+            ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
+            ArrayList<Integer> sizes = new ArrayList<Integer>(windowSize);
+            long ackNumbers[][] = new long[noc][windowSize];
+            long tmpseq = 1;
 
-                  // Generate the data used for the packet
-                  size = 0;
-                  data = readFile(fis);
+            for (int i = 0; i < windowSize; i++) {
+               // sending data in packets of 65507-15
+               byte data[] = new byte[MAX_DATA_SZ];
 
-                  System.out.println("Packet " + i + "added to arraylist size:" + size);
-                  packetsList.add(data);
-                  sizes.add(size);
-                  tmpseq = tmpseq + size;
-                  ackNumberExpected.add(tmpseq);
-               }
+               // Generate the data used for the packet
+               size = 0;
+               data = readFile(fis);
 
-               while (packets < packetsNeeded) {
+               System.out.println("Packet " + i + "added to arraylist size:" + size);
+               packetsList.add(data);
+               sizes.add(size);
+               tmpseq = tmpseq + size;
+               ackNumberExpected.add(tmpseq);
+            }
+
+            while (packets < packetsNeeded) {
+               try {
                   senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
                   receiverStatusThread[][] rcvthreads = new receiverStatusThread[noc][windowSize];
 
                   // create a new thread for each client to send the n packets in the list +start
                   // sending it
                   tmpseq = seqNumber;
+                  System.out.println(
+                        "Attempting to send packets " + packets + "-" + (packets + windowSize - 1) + " to all clients");
                   for (int j = 0; j < windowSize; j++) {
                      for (int i = 0; i < noc; i++) {
                         System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
                         threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
-                              packetsList.get(j), packets, tmpseq, i);
+                              packetsList.get(j), (packets + j), tmpseq, i);
                         // if this join loop isnt here even this crashes :)
-                        // for (int k = 0; k < j; k++)
-                        // threads[i][k].join();
+                        for (int k = 0; k < j; k++)
+                        threads[i][k].join();
                         threads[i][j].start();
-                        rcvthreads[i][j] = new receiverStatusThread(server, packets, i);
+                        rcvthreads[i][j] = new receiverStatusThread(server, packets + j, i);
                         rcvthreads[i][j].start();
 
                      }
                      tmpseq += sizes.get(j);
                   }
+               
 
                   for (int j = 0; j < windowSize; j++)
                      for (int i = 0; i < noc; i++) {
-                        System.out.println("Waiting for packet " + (packets + j) + " from client " + i);
+                        System.out.println("Waiting for packets");
                         threads[i][j].join();
+
                         packetsSent[i] += threads[i][j].getNBPacketSent();
                         bytesSend[i] += threads[i][j].getNBByteSent();
                         rcvthreads[i][j].join();
-
-                        ackNumbers[rcvthreads[i][j].getCnb()][rcvthreads[i][j].getPnb()] = rcvthreads[i][j]
+                        
+                        ackNumbers[rcvthreads[i][j].getCnb()][rcvthreads[i][j].getPnb()%8] = rcvthreads[i][j]
                               .getAckNumber();
+                           
                      }
 
                   int restartFrom = windowSize;
@@ -251,7 +258,7 @@ public class server extends Thread {
                      ackNumberExpected.remove(0);
                   }
 
-                  long tmpseqNumber = seqNumber;
+                  tmpseq = seqNumber;
                   for (int i = 0; i < restartFrom; i++) {
                      // and if there are still packets in the file we read the next one
                      if (packets <= (packetsNeeded - windowSize)) {
@@ -263,31 +270,30 @@ public class server extends Thread {
 
                         packetsList.add(data);
                         sizes.add(size);
-                        tmpseqNumber += size;
-                        ackNumberExpected.add(tmpseqNumber);
+                         System.out.println("Packet " + (packets+i) + "added to arraylist size:" + size);
+                        tmpseq += size;
+                        ackNumberExpected.add(tmpseq);
                      }
                      // otherwise the windowsize decreases
                      else
                         windowSize--;
                   }
+               } catch (Exception e) {
+                  System.out.println("We catch an exception but what??");
                }
-
-            } catch (Exception e) {
-               // TODO: handle exception
             }
             break;
       }
 
       // receive by all clients byresReceived
       for (int i = 0; i < noc; i++) {
-
-         //send ok that all finished
+         // send ok that all finished
          byte[] signal = new byte[1];
-			signal = Integer.toString(1).getBytes();
-			packet = new DatagramPacket(signal, signal.length, addresses[i], cl_ports[i]);
-			server.send(packet);
+         signal = Integer.toString(1).getBytes();
+         packet = new DatagramPacket(signal, signal.length, addresses[i], cl_ports[i]);
+         server.send(packet);
 
-         //receive nr of bytes
+         // receive nr of bytes
          buffer = new byte[100];
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);

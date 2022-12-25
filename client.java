@@ -73,9 +73,11 @@ public class client extends Thread {
 				// reset the data buffer each time
 				byte[] data = new byte[65507];
 
+				
 				// receive packet
 				packet = new DatagramPacket(data, data.length);
-				client.receive(packet);
+				client.receive(packet);	
+				System.out.println("Client "+noProcess+" attempts to receive packet "+packets+" length" + packet.getLength());
 
 
 				//receive seqnr
@@ -89,7 +91,7 @@ public class client extends Thread {
 					sizeBytes[i-10] = packet.getData()[i];
 				int size= Integer.parseInt(new String(sizeBytes).trim());
 
-				System.out.println("Packet " + packets + "[Before addition]Seq : " + seqNr + "Ack: " + ackNumber +" size:"+size);
+				//System.out.println("Packet " + packets + "[Before addition]Seq : " + seqNr + "Ack: " + ackNumber +" size:"+size);
 
 				// simulating a fail if chance <=probFail
 				chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
@@ -100,7 +102,7 @@ public class client extends Thread {
 				if (chance < probFail || ackNumber != seqNr) { // in case of failure (reminder probFail is provided as
 																// argument)
 
-					System.out.println("From client:Packet " + packets + "failed for client " + noProcess);
+					System.out.println("From client:Packet " + packets + "FAAAAAILEDGJKDNGJKFDBGJKDF for client " + noProcess);
 					// send to server we are not good
 					// send to server the ack number as well as the packet we are receiving this for
 					seqbytes = new byte[10];
@@ -161,12 +163,10 @@ public class client extends Thread {
 				packet = new DatagramPacket(response, response.length, packet.getAddress(), packet.getPort());
 				client.send(packet);
 
-				// how about we try to get rid of this !
-
 				bytesReceived += size;
 
 				packets++;
-				// writing to buffer the packet 0 and flushing it
+				// writing to buffer the packet and flushing it
 				FOS.write(data, 15, size);
 				FOS.flush();
 

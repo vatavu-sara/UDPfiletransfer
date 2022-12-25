@@ -20,14 +20,10 @@ public class senderThreadGBN extends Thread {
 
     private long seqNumber = 0;
 
-    private int statusnb;
 
     private int pnb;
     private int cnb;
 
-    public int getStatusnb() {
-        return statusnb;
-    }
 
     senderThreadGBN(DatagramSocket server, InetAddress addr, int port, int size, byte[] data, int packetNumber,long seqNumber, int clientNumber) {
     
@@ -49,12 +45,6 @@ public class senderThreadGBN extends Thread {
     public void run() {
 
         DatagramPacket packet = null;
-        DatagramPacket packetLength= null;
-        status=new DatagramPacket(data, 10);
-
-        //idk maybe fix
-        status.setAddress(addr);
-        status.setPort(port);
 
         //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
@@ -66,7 +56,7 @@ public class senderThreadGBN extends Thread {
             byte [] sizeBytes= Integer.toString(size).getBytes();
             byte[] packetData= new byte[65507];
 
-            System.out.println("size:"+size);            
+            //System.out.println("size:"+size);            
             //adding the seq no to the packet data
             for(int i=0;i<buffer2.length;i++)
                 packetData[i]= buffer2[i];
@@ -78,12 +68,16 @@ public class senderThreadGBN extends Thread {
             //adding the size
             for(int i=0;i<sizeBytes.length;i++)
                 packetData[i+10]= sizeBytes[i];
+            for(int i=sizeBytes.length+10;i<15;i++)
+                packetData[i]='_';
 
             //copying all the file data to the packet
             System.arraycopy(data, 0, packetData, 15, data.length);
-    
+            
+            System.out.println("SENDING Packet no. " + pnb + " to client" +cnb+ "! Length:" + size);
+
             // sending the packet itself
-            packet = new DatagramPacket(packetData, packetData.length,status.getAddress(),status.getPort());
+            packet = new DatagramPacket(packetData, packetData.length,addr,port);
             server.send(packet);
 
             packetsSent++;
@@ -93,8 +87,6 @@ public class senderThreadGBN extends Thread {
             e.printStackTrace();
         }
 
-
-        //System.out.println("From "+Thread.currentThread()+"Packet no. " + pnb + " sent to client" +cnb+ "! Length:" + size);
         
     }    
 

@@ -59,7 +59,6 @@ public class receiverStatusThread extends Thread{
         cnb=(int) status.getData()[20];
 
         System.out.println("Received from client:"+cnb+" packet " +pnb+" ackNb:"+ackNumber);
-        //  if(ackNumber==0) System.out.println("From thread:Packet "+pnb+" failed to client "+cnb);
-        //  else System.out.println("From thread:Packet "+pnb+" received to client "+cnb);
+    
     }
 }
