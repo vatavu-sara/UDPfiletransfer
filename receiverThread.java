@@ -11,8 +11,6 @@ public class receiverThread extends Thread{
     private InetAddress addr;
     private long ack;
 
-    private boolean succesfullyTransmitted;
-
 
     receiverThread(DatagramSocket server, int port, InetAddress addr) {
         super();
@@ -21,7 +19,6 @@ public class receiverThread extends Thread{
         this.addr = addr;
 
         ack = 0;
-        succesfullyTransmitted = false;
     }
 
     @Override

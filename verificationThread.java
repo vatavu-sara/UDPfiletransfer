@@ -56,7 +56,7 @@ public class verificationThread extends Thread {
             if(!test) {
                 succes = false;
                 failurePoint = n;
-                lastgoodseq = expectedSeqs[n-1];
+                lastgoodseq = expectedSeqs[n];
                 return;
             }
         }

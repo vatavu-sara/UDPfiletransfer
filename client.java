@@ -5,10 +5,13 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Random;
 
 public class client extends DatagramSocket implements Runnable{
+    static int MAX_PKT_SZ = 65507; //in bytes
     //client related info
     private int nb; //id of the client
     private int probFail; //probability of failure of a client
@@ -27,14 +30,19 @@ public class client extends DatagramSocket implements Runnable{
     private int serverPort; //number of client
     private int packetsNeeded;
     private int packetsReceived;
-    private long byteRecived;
+    private int winsz;
+    private long minseq;
+    private long maxseq;
 
     //formating
     private String offset;
 
+    //packets
+    ArrayList<DatagramPacket> packetList;
 
 
-    client(int nb, int serverPort, int probFail) throws SocketException, UnknownHostException {
+
+    client(int nb, int serverPort, int probFail, int serverwsz) throws SocketException, UnknownHostException {
         super();
         serverName =  InetAddress.getLocalHost();
 
@@ -46,8 +54,9 @@ public class client extends DatagramSocket implements Runnable{
 
         rng = new Random();
 
+        winsz = serverwsz;
+
         packetsReceived = 0;
-        byteRecived = 0;
 
         //creates the dir for the client
         dirName = defDirName+nb;
@@ -55,6 +64,10 @@ public class client extends DatagramSocket implements Runnable{
         new File(dirName).mkdir();
 
         offset = "-".repeat(nb+1) + "(" + nb + ")";
+
+        packetList = new ArrayList<DatagramPacket>();
+
+        this.setSoTimeout(1000);
     }
 
     private void connect() throws IOException {
@@ -79,6 +92,102 @@ public class client extends DatagramSocket implements Runnable{
         
     }
 
+    private long getSeq(DatagramPacket p) {
+        /*reads the first ten bytes in the packet*/
+        byte[] buff = new byte[10];
+        int count = 0;
+
+        for (int i = 0; i < 10; i++) {
+            if (p.getData()[i] != 0) {
+                System.out.println(count);
+                count ++;
+                buff[i] = p.getData()[i];
+            }
+        }
+        
+        long seq = Long.valueOf(new String(buff, 0, count));
+
+        return seq;
+    }
+
+    private long getAck(DatagramPacket p) {
+        return getSeq(p)+ p.getLength();
+    }
+
+    private void flushPackets() throws IOException {
+        /*
+         * steps :
+         * sort packets by seq
+         * perform some check to see if the order is good
+         * send ack for each packet
+         * write to file in order
+         * reset buffer
+         */
+
+        DatagramPacket[] sortedPackets = new DatagramPacket[packetList.size()];
+        //convert arraylist to list manually
+
+        for (int i = 0; i < sortedPackets.length; i++) {
+            sortedPackets[i] = packetList.get(i);
+        }
+
+        System.out.println("Succesfully converted");
+
+        //then do the stuff
+
+        for (int i = 1; i < sortedPackets.length; i++) {
+            DatagramPacket key = sortedPackets[i];
+            int j = i-1;
+
+            while(j>=0 && getSeq(sortedPackets[i]) > getSeq(key)) {
+                sortedPackets[j+1] = sortedPackets[j];
+                j--;
+            }
+
+            sortedPackets[j+1] = key;
+        }
+
+        //now that we sorted, they might be a place where we have a packet missing : we must check for the continuousity of the packets to make sure we don't write a packet in the place of a missing one
+        int failurePoints = 0;
+
+        for (int i = 0; i < sortedPackets.length; i++) {//compare each seq with the pevious one (check is prev ack = new seq
+            if(i==0) {
+                if (minseq != getSeq(sortedPackets[i])) {
+                    failurePoints = i;
+                }
+            } else {
+                if (getAck(sortedPackets[i-1]) != getSeq(sortedPackets[i])) {
+                    failurePoints = i;
+                }
+            }
+        }
+
+        //the we delete everything from the failure point
+        for (int i = 0; i < sortedPackets.length; i++) {
+            if (i >= failurePoints) {
+                sortedPackets[i] = null;
+            }
+        }
+
+        //after the check, we can send to ack for the remaining packet (aka eveything that isn't null in sortedPackets)
+        for (int i = 0; i < sortedPackets.length; i++) {
+            if (sortedPackets[i] != null) {
+                byte[] ack = Long.toString(getAck(sortedPackets[i])).getBytes();
+
+                DatagramPacket p = new DatagramPacket(ack, ack.length, serverName, serverPort);
+                this.send(p);
+                packetsReceived ++; //if the packet was received, checked and then its ack was send then we can mark it as received)
+
+                //also write to file
+                FOS.write(sortedPackets[i].getData(), 10, sortedPackets[i].getLength() - 10);
+            }
+        }
+
+        //in the end we reset the buffer;
+        packetList = new ArrayList<DatagramPacket>();
+        FOS.flush();
+    }
+
     @Override
     public void run() {
         try {
@@ -94,57 +203,47 @@ public class client extends DatagramSocket implements Runnable{
             packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
             System.out.println(offset + "The file will come in " + packetsNeeded + " packets.");
+
+            //set the range for the acceptable seqs
+            minseq = ack;
+            maxseq = minseq + winsz * MAX_PKT_SZ;
+
+            int flushCounter = 0;
             
             do {
-                //first receive the seq
-                buff = new byte[10];
-                DatagramPacket p = new DatagramPacket(buff, buff.length, serverName, serverPort);
-                this.receive(p);
+                flushCounter++;
 
-                //parse the received seq;
-                long tmpAck = Long.parseLong(new String(p.getData(), 0, p.getLength())); 
-
-                //receives the packet length
-                buff = new byte[10];
-                p = new DatagramPacket(buff, buff.length, serverName, serverPort);
-                this.receive(p);
-
-                //parse it
-                int len = Integer.parseInt(new String(p.getData(), 0, p.getLength()));
-
-
-                //recives the packet itself
-                byte[] data = new byte[len];
-                p = new DatagramPacket(data, len, serverName, serverPort);
-                this.receive(p);
-
-                //evalutate if the stuff needs to fail
-                int chance = rng.nextInt(100);
-
-                //buff and packet for the ack number
-                buff = new byte[10];
-
-                //depending on the RNG we send the previous ack or the new one
-                ack = (chance > probFail) ? ack : (ack+tmpAck);
-
-
-                //if the packet was "correctly" received we write it;
-                if (chance <= probFail) {
-
-                    System.out.println(offset + "Succesfully received packet n°" + packetsReceived);
-
-                    packetsReceived++;
-                    FOS.write(data, 0, len);
-				    FOS.flush();
-                } else {
-                    System.out.println(offset + "Failled to recieve packet n°" + packetsReceived + " awaiting resend...");
+                if (flushCounter == winsz-1) {
+                    //do the stuf with sorting, writing and updating the min and max
+                    flushPackets();
                 }
 
-                //sends the ack
-                buff = Long.toString(ack).getBytes();
-                p = new DatagramPacket(buff, buff.length, serverName, serverPort);
-                this.send(p);
+                buff = new byte[MAX_PKT_SZ];
 
+                DatagramPacket p = new DatagramPacket(buff, MAX_PKT_SZ, serverName, serverPort);
+                try {
+                    this.receive(p);
+                } catch (SocketTimeoutException e) {//if we timeout, try again (avoids deadlocks)
+                    continue;
+                }
+                
+
+                //simulate failure
+                if (probFail < rng.nextInt(100)) {
+                    long s = getSeq(p);
+                    //get the seq of the newly received packet, then compare if it fits the range we defined
+                    if (s < minseq || s > maxseq) {
+                        //discard packet
+                        System.out.println(offset + "Discarding packet, wrong seq...");
+                        continue;
+                    }
+                    //we will count packetsRecevied once we sorted and checked them
+
+                    packetList.add(p);
+
+                }
+
+                
 
             } while(packetsNeeded > packetsReceived);
 

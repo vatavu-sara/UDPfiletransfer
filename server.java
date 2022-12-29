@@ -43,7 +43,7 @@ public class server extends DatagramSocket implements Runnable{
 
     server(String filePath, int winsz, int noc) throws SocketException {
         super(8000);
-        this.setSoTimeout(100);
+        this.setSoTimeout(1000);
 
         this.filePath = filePath;
         this.winsz = winsz;
@@ -61,7 +61,7 @@ public class server extends DatagramSocket implements Runnable{
         seqs = new long[winsz][noc];
         for (int i = 0; i < winsz; i++) {
             for (int j = 0; j < noc; j++) {
-                seqs[i][j] = 1;
+                seqs[i][j] = 1 + i*MAX_PKT_SZ;
             }
         }
 
@@ -147,6 +147,8 @@ public class server extends DatagramSocket implements Runnable{
         try {
             connect(); //conect to everybody
 
+            System.out.println("UwU");
+
             FIS = new FileInputStream(new File(filePath)); //to read data from the file we need to send
 
             //compute the number of packet needed
@@ -172,6 +174,7 @@ public class server extends DatagramSocket implements Runnable{
             }
 
             do {
+                System.out.println("UwU");
                 /*
                  * steps :
                  *     V - Send packet win to winsz
@@ -268,6 +271,17 @@ public class server extends DatagramSocket implements Runnable{
 
     public long minOfArray(long[] arr) {
         long min = arr[0];
+        
+        for(int i=0; i<arr.length; i++ ) {
+            if(arr[i]<min) {
+                min = arr[i];
+            }
+        }
+        return min;
+    }
+
+    public int minOfArray(int[] arr) {
+        int min = arr[0];
         
         for(int i=0; i<arr.length; i++ ) {
             if(arr[i]<min) {

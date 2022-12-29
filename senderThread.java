@@ -28,6 +28,8 @@ public class senderThread extends Thread{
         this.port = port;
         this.addr = addr;
 
+        toSend = packet;
+
         this.seq = seq;
 
         nbc = idClient;
@@ -57,7 +59,7 @@ public class senderThread extends Thread{
             byte[] seqByte = Long.toString(seq).getBytes();
 
             System.arraycopy(seqByte, 0, buff, 0, seqByte.length);
-            System.arraycopy(toSend, 0, buff, seqByte.length, toSend.length);
+            System.arraycopy(toSend, 0, buff, 10, toSend.length);
 
             DatagramPacket p = new DatagramPacket(buff, buff.length, addr, port);
             server.send(p);
