@@ -58,7 +58,7 @@ public class receiverStatusThread extends Thread{
         pnb=Integer.parseInt(new String(pnbBytes).trim());
         cnb=(int) status.getData()[20];
 
-        System.out.println("Received from client:"+cnb+" packet " +pnb+" ackNb:"+ackNumber);
+        System.out.println("[ReceiverThread] client:"+cnb+" packet " +pnb+" ackNb:"+ackNumber);
     
     }
 }
