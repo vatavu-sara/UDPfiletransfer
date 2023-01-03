@@ -70,8 +70,7 @@ public class client extends Thread {
 		
 		while (true) {
 			try {
-				if (packetsNeeded- packets< windowSize)
-					windowSize=packetsNeeded- packets;
+				
 				//we want to receive only packets in our window
 				long minseq = ackNumber; //supposedly we already received all the packets up to the window position
 				long maxseq = ackNumber + windowSize * MAX_PKT_SZ; 
@@ -85,13 +84,22 @@ public class client extends Thread {
 				client.receive(packet);
 				int packetsReceivedByAll = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
+				int receivedAlready=missingPoint;
 				missingPoint=missingPoint-packetsReceivedByAll;//this will be then the starting point to send again the windowsize
-				System.out.println("All clients received "+packetsReceivedByAll +" packets from windowsize so starting from packet" + missingPoint +" in the window ("+packets+")");
+
+				if (packets - missingPoint >= packetsNeeded -windowSize )
+					{windowSize = packetsNeeded - packets;
+					
+					}
+
+				System.out.println("All clients received "+packetsReceivedByAll +" packets from windowsize and client "+ noProcess + " received "+ receivedAlready
+				+"so starting from packet " + missingPoint +" in the window ("+packets+") wsize:"+windowSize);
 				System.out.println("Client "+noProcess + " receiving packets " + packets+ " - "+ (packets +windowSize-missingPoint-1));
 				long tmpack=ackNumber; //to add
 
 				//need to know somehow where we actually start 
 					//eg if i need only 3 packets and ws is 6 i start from 3
+				
 				for (int a = missingPoint; a < windowSize; a++) {
 						System.out.println("a:"+a);
 					int chance = 100; // default chance is 100 will be overwriten because it is used
@@ -128,7 +136,7 @@ public class client extends Thread {
 						// argument)
 
 						System.out.println(
-								"From client:Packet " + indexPacket + "FAAAAAILEDDDDDDDDDDD for client " + noProcess);
+								"Packet " + indexPacket + "FAAAAAILEDDDDDDDDDDD for client " + noProcess);
 
 						continue;
 					} else {
@@ -155,14 +163,15 @@ public class client extends Thread {
 						}
 
 				//the maximum packets received is the size of them(if all got received correctly)
-				missingPoint=packetsReceived.size();
+				int tmppoint=missingPoint;
+				missingPoint+=packetsReceived.size();
 				long lastpck=packets;
 
 				for (int i = 0; i < packetsReceived.size(); i++)
 					// in case the current packet is a forward to the necessary one we need to
 					// break the cycle
 					if (ackNumber != seqNrs.get(i)) {
-						missingPoint = i;
+						missingPoint = tmppoint+i;
 						break;
 					}
 					// otherwise all is good for this packet so we can even write it and send an OK
@@ -171,7 +180,7 @@ public class client extends Thread {
 						ackNumber += getSize(packetsReceived.get(i));
 						
 						System.out.println(
-								"From client: Packet no. " + packets + " received by client" + noProcess + "!");
+								"From client: Packet no. " + packets + " writen by client" + noProcess + "!");
 
 						// send to server the ack number as well as the packet we are receiving this for
 						byte [] seqbytes = new byte[10];
@@ -179,7 +188,7 @@ public class client extends Thread {
 
 						byte packetNumber[] = new byte[10];
 						packetNumber = Long.toString(getSeq(packetsReceived.get(i))/65507).getBytes();
-						lastpck = getSeq(packetsReceived.get(i))/65507;
+						lastpck = getSeq(packetsReceived.get(i))/65507+1;
 						byte[] response = new byte[21];
 
 						// add the ack nr to the packet
@@ -206,9 +215,10 @@ public class client extends Thread {
 						FOS.flush();
 					}
 					
+					
 				//sending the same ack for the other packets
 				for (int i = missingPoint; i < windowSize; i++){
-					lastpck++;
+					
 					System.out.println(
 								"From client: Packet no. " + (packets+i-missingPoint) + " failed by client" + noProcess + "!");
 
@@ -217,7 +227,7 @@ public class client extends Thread {
 						seqbytes = Long.toString(ackNumber).getBytes();
 
 						byte packetNumber[] = new byte[10];
-						packetNumber = Long.toString(lastpck).getBytes();
+						packetNumber = Long.toString(lastpck++).getBytes();
 
 						byte[] response = new byte[21];
 
@@ -237,16 +247,17 @@ public class client extends Thread {
 						packet = new DatagramPacket(response, response.length, packet.getAddress(), packet.getPort());
 						client.send(packet);
 				}
-				
-				for(int i=0;i<missingPoint;i++)
+
+				//deleting the packets written 
+				for(int i=tmppoint;i<missingPoint;i++)
 				{	//System.out.println("Breaks in client "+noProcess +"for missing point" +missingPoint);
 					packetsReceived.remove(0);
 				}
 
 				if (packets == packetsNeeded) {
 					// maybe wait for signal that all finished
-					packet = new DatagramPacket(buffer, 1);
-					client.receive(packet);
+					// packet = new DatagramPacket(buffer, 1);
+					// client.receive(packet);
 
 					// sending nr of bytes received(real of the file)
 					byte[] signal = new byte[100];

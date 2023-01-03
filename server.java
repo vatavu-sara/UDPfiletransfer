@@ -84,9 +84,11 @@ public class server extends Thread {
       int packetsNeeded = fis.available() / MAX_DATA_SZ + 1; // nr of packets needed
       System.out.println("File (" + fis.available() + " bytes) Needs " + packetsNeeded + " packets to transmit "
             + fileName + "\n\n");
+      if (windowSize > packetsNeeded)
+            windowSize = packetsNeeded;
 
       for (int i = 0; i < noc; i++) {
-         // send nr of packets needed
+         // send nr of packets needed and windowsize
          buffer = new byte[10];
          buffer = Integer.toString(packetsNeeded).getBytes();
          packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
@@ -157,9 +159,10 @@ public class server extends Thread {
              */
 
             ArrayList<Long> ackNumberExpected = new ArrayList<Long>(windowSize);
+            int restartFrom = 0;
+            int restartFromArray[]= new int[noc];
 
-            if (windowSize > packetsNeeded)
-               windowSize = packetsNeeded;
+           
             // System.out.println("Go-back-N method chosen! Window size:" + windowSize);
 
             // creating the N packets' data list
@@ -178,10 +181,12 @@ public class server extends Thread {
 
                System.out.println("Packet " + i + "added to arraylist size:" + size);
                packetsList.add(data);
-               sizes.add(size);
-               tmpseq = tmpseq + size;
+               sizes.add(size+15);
+               tmpseq = tmpseq + sizes.get(i); //we add the 15 bytes used also to the seqnr
                ackNumberExpected.add(tmpseq);
             }
+               for(int i=0;i<noc;i++)
+                  restartFromArray[i]=0;
 
             while (packets < packetsNeeded) {
                try {
@@ -190,61 +195,94 @@ public class server extends Thread {
 
                   // create a new thread for each client to send the n packets in the list +start
                   // sending it
-                  tmpseq = seqNumber;
                   System.out.println(
                         "Attempting to send packets " + packets + "-" + (packets + windowSize - 1) + " to all clients");
-                  for (int j = 0; j < windowSize; j++) {
+                  
+                     //for each client we start sending from the first packet lost to the limit of the window
                      for (int i = 0; i < noc; i++) {
+                        //but first we need to send how many packets got received by everyone
+                        buffer = new byte[5];
+                        buffer = Integer.toString(restartFrom).getBytes();
+                        packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
+                        server.send(packet);
+                        
+                        //try to transmit only the packets that are missing for each client up to the windowSize
+                        System.out.println("Restart from = "+restartFromArray[i]);
+                        for (int j = restartFromArray[i]; j < windowSize; j++) {
                         System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
+                        long sq=seqNumber;
+                        for(int k=0;k<j;k++)
+                           sq+=sizes.get(k);
                         threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
-                              packetsList.get(j), (packets + j), tmpseq, i);
-                        // if this join loop isnt here even this crashes :)
-                        for (int k = 0; k < j; k++)
+                              packetsList.get(j), (packets + j), sq, i);
+                        // this join loop is meant to make the packets sequential in a client (otherwise there is the posibility we get an upper packet 
+                        //before a lower and that is too hard to fix, we LOVE UDP
+                        for (int k = restartFromArray[i]; k < j; k++)
                         threads[i][k].join();
                         threads[i][j].start();
                         rcvthreads[i][j] = new receiverStatusThread(server, packets + j, i);
+                        //and we make it sequential too 
+                        // for (int k = 0; k < j; k++)
+                        // rcvthreads[i][k].join();
                         rcvthreads[i][j].start();
-
-                     }
-                     tmpseq += sizes.get(j);
+                        }
+                     
                   }
                
+               
 
-                  for (int j = 0; j < windowSize; j++)
-                     for (int i = 0; i < noc; i++) {
-                        System.out.println("Waiting for packets");
+                  System.out.println("Waiting for packets");
+                     for (int i = 0; i < noc; i++)
+                        for (int j = restartFromArray[i]; j < windowSize; j++) {
                         threads[i][j].join();
 
                         packetsSent[i] += threads[i][j].getNBPacketSent();
                         bytesSend[i] += threads[i][j].getNBByteSent();
                         rcvthreads[i][j].join();
-                        
-                        ackNumbers[rcvthreads[i][j].getCnb()][rcvthreads[i][j].getPnb()%8] = rcvthreads[i][j]
+                       
+                        System.out.println("Client "+ rcvthreads[i][j].getCnb() + " packet " + (rcvthreads[i][j].getPnb()-packets) 
+                        +" in windowsize has ack "+ rcvthreads[i][j]
+                        .getAckNumber());
+                        ackNumbers[rcvthreads[i][j].getCnb()][rcvthreads[i][j].getPnb()-packets] = rcvthreads[i][j]
                               .getAckNumber();
                            
                      }
+                 
 
-                  int restartFrom = windowSize;
+                  restartFrom = windowSize;
+                  
                   // now we got all ack no's so we know where every client lost the first packet
-                  for (int j = 0; j < windowSize; j++) {
-                     if (restartFrom != windowSize)
-                        break;
-                     for (int i = 0; i < noc; i++)
+                  
+                    
+                     for (int i = 0; i < noc; i++){
+                        int idx=restartFromArray[i];
+                        restartFromArray[i]=windowSize;
+                        System.out.println("Client " + i +":");
+                        for (int j = idx; j < windowSize; j++){
+                        System.out.println("Packet "+ j + " Real ack:" + ackNumbers[i][j] + " Expected ack:" + ackNumberExpected.get(j));
                         if (ackNumbers[i][j] != ackNumberExpected.get(j)) {
-                           System.out.println("Real :" + ackNumbers[i][j] + " Expected:" + ackNumberExpected.get(j));
                            System.out.println(
                                  "First packet got lost at position " + j + " in the window size (client" + i);
-                           restartFrom = j;
-                           break;
+                           restartFrom = restartFrom < j ? restartFrom : j ;
+                           restartFromArray[i]=j;
+                           break; 
                         }
+                     }
                   }
 
+                  for (int i = 0; i < noc; i++)
+                     restartFromArray[i]-=restartFrom;
+
+                  if (restartFrom ==windowSize)
+                     System.out.println("All packets in the windowsize got received");
+                  else
                   if (restartFrom != 0)
                      System.out.println("All good for the first " + restartFrom + " packets");
-                  else
+                  else 
                      System.out.println("A client lost the first packet");
 
                   // we can get rid of the packets that went good
+                  tmpseq = ackNumberExpected.get(ackNumberExpected.size()-1);
 
                   for (int i = 0; i < restartFrom; i++) {
                      System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
@@ -258,7 +296,6 @@ public class server extends Thread {
                      ackNumberExpected.remove(0);
                   }
 
-                  tmpseq = seqNumber;
                   for (int i = 0; i < restartFrom; i++) {
                      // and if there are still packets in the file we read the next one
                      if (packets <= (packetsNeeded - windowSize)) {
@@ -269,9 +306,9 @@ public class server extends Thread {
                         data = readFile(fis);
 
                         packetsList.add(data);
-                        sizes.add(size);
-                         System.out.println("Packet " + (packets+i) + "added to arraylist size:" + size);
-                        tmpseq += size;
+                        sizes.add(size+15);
+                        System.out.println("Packet " + (packets+i+(windowSize-restartFrom)) + " added to arraylist size:" + size);
+                        tmpseq += size+15;
                         ackNumberExpected.add(tmpseq);
                      }
                      // otherwise the windowsize decreases
@@ -288,11 +325,11 @@ public class server extends Thread {
       // receive by all clients byresReceived
       for (int i = 0; i < noc; i++) {
          // send ok that all finished
-         byte[] signal = new byte[1];
-         signal = Integer.toString(1).getBytes();
-         packet = new DatagramPacket(signal, signal.length, addresses[i], cl_ports[i]);
-         server.send(packet);
-
+         // byte[] signal = new byte[1];
+         // signal = Integer.toString(1).getBytes();
+         // packet = new DatagramPacket(signal, signal.length, addresses[i], cl_ports[i]);
+         // server.send(packet);
+         System.out.println("Do we even get here");
          // receive nr of bytes
          buffer = new byte[100];
          packet = new DatagramPacket(buffer, buffer.length);
