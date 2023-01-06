@@ -4,12 +4,12 @@ import java.util.Random;
 public class Launcher {
 
     //Parameters
-    private static int NumberOfClient = 10;
+    private static int NumberOfClient = 1;
     private static int port = 4444;
-    private static String file = "Docker.mp4";
-    private static int maxProbFail =1;
+    private static String file = "LEAGUE.webm";
+    private static int maxProbFail =20;
     private static String algo = "goBackN"; //goBackN 
-    private static int windowSize = 5; //windowsize for gobackn
+    private static int windowSize = 8; //windowsize for gobackn
     
     public static void main(String[] args) {
 
