@@ -91,12 +91,14 @@ public class client extends Thread {
 				// is advanced by packetsReceivedByAll
 				missingPoint = missingPoint - packetsReceivedByAll;
 
-				// if there are less packets left than the WS we need to decrease it
-				if (packets - missingPoint >= packetsNeeded - windowSize) {
-					windowSize = packetsNeeded - packets;
-
-				}
-
+				// if there are less packets left than the WS we need to decrease it as well as the missing point
+				if(windowSize - missingPoint > packetsNeeded - packets) 
+			{	int oldWS= windowSize;
+				windowSize= packetsNeeded - packets;
+				missingPoint -= oldWS-windowSize;
+				missingPoint = missingPoint < 0 ? 0 : missingPoint;
+			}
+				
 				System.out.println("All clients received " + packetsReceivedByAll
 						+ " packets from windowsize and client " + noProcess + " received " + receivedAlready
 						+ "so starting from packet " + missingPoint + " in the window (" + packets + ") wsize:"

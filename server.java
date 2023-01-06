@@ -167,8 +167,8 @@ public class server extends Thread {
                               packetsList.get(j), (packets + j), sq, i);
                         // this join loop is meant to make the packets sequential in a client (otherwise there is the posibility we get an upper packet 
                         //before a lower and that is too hard to fix, we LOVE UDP
-                        // for (int k = restartFromArray[i]; k < j; k++)
-                        // threads[i][k].join();
+                        for (int k = restartFromArray[i]; k < j; k++)
+                        threads[i][k].join();
                         threads[i][j].start();
                         rcvthreads[i][j] = new receiverStatusThread(server, packets + j, i);
                         //and we make it sequential too 
@@ -274,9 +274,10 @@ public class server extends Thread {
                         tmpseq += size+15;
                         ackNumberExpected.add(tmpseq);
                      }
-                     // otherwise the windowsize decreases
+                     // otherwise the windowsize decreases as well as the place for restart
                      else
-                        windowSize--;
+                        {windowSize--;
+                        }
                   }
                } catch (Exception e) {
                   System.out.println("We catch an exception but what??");
