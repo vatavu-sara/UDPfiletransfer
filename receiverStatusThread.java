@@ -55,7 +55,7 @@ public class receiverStatusThread extends Thread{
         for(int i=10;i<status.getLength()&&status.getData()[i]!='_';i++)
         pnbBytes[i-10]=status.getData()[i];
 
-        System.out.println("breaks right here");
+
         pnb=Integer.parseInt(new String(pnbBytes).trim());
         cnb=(int) status.getData()[20];
 
