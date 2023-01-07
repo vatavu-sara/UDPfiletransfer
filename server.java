@@ -148,15 +148,18 @@ public class server extends Thread {
                   
                      //for each client we start sending from the first packet lost to the limit of the window
                      for (int i = 0; i < noc; i++) {
+            
                         //but first we need to send them how many packets got received by every client
                         buffer = new byte[5];
                         buffer = Integer.toString(restartFrom).getBytes();
                         packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
                         server.send(packet);
-                        
+                     }
+                     for (int j=0 ; j<windowSize;j++)
+                        for(int i=0;i<noc; i++){
                         //we try to transmit only the packets that are missing for the client up to the windowSize
                         System.out.println("Restart from = "+restartFromArray[i]);
-                        for (int j = restartFromArray[i]; j < windowSize; j++) {
+                        if(j>=restartFromArray[i]) {
                         System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
 
                         //calculate the seqnr as 1+the size of all packets sent before
@@ -167,8 +170,8 @@ public class server extends Thread {
                               packetsList.get(j), (packets + j), sq, i);
                         // this join loop is meant to make the packets sequential in a client (otherwise there is the posibility we get an upper packet 
                         //before a lower and that is too hard to fix, we LOVE UDP
-                        // for (int k = restartFromArray[i]; k < j; k++)
-                        // threads[i][k].join();
+                        for (int k = restartFromArray[i]; k < j; k++)
+                        threads[i][k].join();
                         threads[i][j].start();
                         rcvthreads[i][j] = new receiverStatusThread(server, packets + j, i);
                         //and we make it sequential too 
