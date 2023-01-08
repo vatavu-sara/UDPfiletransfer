@@ -17,8 +17,8 @@ public class server extends Thread {
              // end of the file.
 
    public void main(String[] args) throws IOException {
-      if (args.length != 5) {
-         System.out.println("Arguments not valid!(Need 2)");
+      if (args.length != 4) {
+         System.out.println("Arguments not valid!(Need 4)");
          System.exit(0);
       }
 
@@ -30,8 +30,7 @@ public class server extends Thread {
       DatagramPacket packet = null;
       int noc = Integer.parseInt(args[1]); // number of clients
       String fileName = args[2];
-      String algorithm = args[3];
-      int windowSize = Integer.parseInt(args[4]);
+      int windowSize = Integer.parseInt(args[3]);
       InetAddress addresses[] = new InetAddress[noc];
       int cl_ports[] = new int[noc];
 
@@ -127,7 +126,7 @@ public class server extends Thread {
                size = 0;
                data = readFile(fis);
 
-               System.out.println("Packet " + i + "added to arraylist size:" + size);
+               // System.out.println("Packet " + i + "added to arraylist size:" + size);
                packetsList.add(data);
                sizes.add(size+15);
                tmpseq = tmpseq + sizes.get(i); //we add the 15 bytes used also to the seqnr
@@ -138,13 +137,13 @@ public class server extends Thread {
 
             while (packets < packetsNeeded) {
                try {
-                  senderThreadGBN[][] threads = new senderThreadGBN[noc][windowSize];
-                  receiverStatusThread[][] rcvthreads = new receiverStatusThread[noc][windowSize];
+                  senderThread[][] threads = new senderThread[noc][windowSize];
+                  receiverThread[][] rcvthreads = new receiverThread[noc][windowSize];
 
                   // create a new thread for each client to send the n packets in the list +start
                   // sending it
-                  System.out.println(
-                        "Attempting to send packets " + packets + "-" + (packets + windowSize - 1) + " to all clients");
+                  // System.out.println(
+                  //       "Attempting to send packets " + packets + "-" + (packets + windowSize - 1) + " to all clients");
                   
                      //for each client we start sending from the first packet lost to the limit of the window
                      for (int i = 0; i < noc; i++) {
@@ -155,25 +154,26 @@ public class server extends Thread {
                         packet = new DatagramPacket(buffer, buffer.length, addresses[i], cl_ports[i]);
                         server.send(packet);
                      }
+
                      for (int j=0 ; j<windowSize;j++)
                         for(int i=0;i<noc; i++){
                         //we try to transmit only the packets that are missing for the client up to the windowSize
-                        System.out.println("Restart from = "+restartFromArray[i]);
+                        //System.out.println("Restart from = "+restartFromArray[i]);
                         if(j>=restartFromArray[i]) {
-                        System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
+                        //System.out.println("(Re)Starting thread no " + (packets + j) + " for client " + i);
 
                         //calculate the seqnr as 1+the size of all packets sent before
                         long sq=seqNumber;
                         for(int k=0;k<j;k++)
                            sq+=sizes.get(k);
-                        threads[i][j] = new senderThreadGBN(server, addresses[i], cl_ports[i], sizes.get(j),
+                        threads[i][j] = new senderThread(server, addresses[i], cl_ports[i], sizes.get(j),
                               packetsList.get(j), (packets + j), sq, i);
                         // this join loop is meant to make the packets sequential in a client (otherwise there is the posibility we get an upper packet 
                         //before a lower and that is too hard to fix, we LOVE UDP
                         for (int k = restartFromArray[i]; k < j; k++)
                         threads[i][k].join();
                         threads[i][j].start();
-                        rcvthreads[i][j] = new receiverStatusThread(server, packets + j, i);
+                        rcvthreads[i][j] = new receiverThread(server, packets + j, i);
                         //and we make it sequential too 
                         // for (int k = 0; k < j; k++)
                         // rcvthreads[i][k].join();
@@ -184,7 +184,7 @@ public class server extends Thread {
                
                
 
-                  System.out.println("Waiting for packets");
+                  //System.out.println("Waiting for packets");
 
                      for (int i = 0; i < noc; i++)
                      //for each client we are checking only the packets missing prior to the (re)sending 
@@ -200,9 +200,9 @@ public class server extends Thread {
                         //once the confirmation/timeout has arrived
                         rcvthreads[i][j].join();
                        
-                        System.out.println("Client "+ rcvthreads[i][j].getCnb() + " packet " + (rcvthreads[i][j].getPnb()-packets) 
-                        +" in windowsize has ack "+ rcvthreads[i][j]
-                        .getAckNumber());
+                        // System.out.println("Client "+ rcvthreads[i][j].getCnb() + " packet " + (rcvthreads[i][j].getPnb()-packets) 
+                        // +" in windowsize has ack "+ rcvthreads[i][j]
+                        // .getAckNumber());
 
                         //we save the acknumber received 
                         ackNumbers[rcvthreads[i][j].getCnb()][rcvthreads[i][j].getPnb()-packets] = rcvthreads[i][j]
@@ -219,14 +219,14 @@ public class server extends Thread {
                         int idx=restartFromArray[i];
                         //and we reset the breaking point
                         restartFromArray[i]=windowSize;
-                        System.out.println("Client " + i +":");
+                       // System.out.println("Client " + i +":");
                         //for all the packets sent we need to check whether it was received or not
                         //using the ack' number
                         for (int j = idx; j < windowSize; j++){
-                        System.out.println("Packet "+ j + " Real ack:" + ackNumbers[i][j] + " Expected ack:" + ackNumberExpected.get(j));
+                        //System.out.println("Packet "+ j + " Real ack:" + ackNumbers[i][j] + " Expected ack:" + ackNumberExpected.get(j));
                         if (ackNumbers[i][j] != ackNumberExpected.get(j)) {
-                           System.out.println(
-                                 "First packet got lost at position " + j + " in the window size (client" + i);
+                           // System.out.println(
+                           //       "First packet got lost at position " + j + " in the window size (client" + i);
                            restartFrom = restartFrom < j ? restartFrom : j ;
                            restartFromArray[i]=j;
                            break; 
@@ -239,20 +239,21 @@ public class server extends Thread {
                   for (int i = 0; i < noc; i++)
                      restartFromArray[i]-=restartFrom;
 
-                  if (restartFrom ==windowSize)
-                     System.out.println("All packets in the windowsize got received");
-                  else
-                  if (restartFrom != 0)
-                     System.out.println("All good for the first " + restartFrom + " packets");
-                  else 
-                     System.out.println("A client lost the first packet");
+                  // if (restartFrom ==windowSize)
+                  //    System.out.println("All packets in the windowsize got received");
+                  // else
+                  // if (restartFrom != 0)
+                  //    System.out.println("All good for the first " + restartFrom + " packets");
+                  // else 
+                  //    System.out.println("A client lost the first packet");
 
                
                   tmpseq = ackNumberExpected.get(ackNumberExpected.size()-1);
                   // we can get rid of the packets that went good
                   for (int i = 0; i < restartFrom; i++) {
-                     System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
-                     // the seqnr of the server increses
+                    System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
+                    //packets++; 
+                    // the seqnr of the server increses
                      seqNumber += sizes.get(0);
                      // we remove the first packet from the list
                      packetsList.remove(0);
@@ -273,7 +274,7 @@ public class server extends Thread {
 
                         packetsList.add(data);
                         sizes.add(size+15);
-                        System.out.println("Packet " + (packets+i+(windowSize-restartFrom)) + " added to arraylist size:" + size);
+                        //System.out.println("Packet " + (packets+i+(windowSize-restartFrom)) + " added to arraylist size:" + size);
                         tmpseq += size+15;
                         ackNumberExpected.add(tmpseq);
                      }
@@ -294,7 +295,6 @@ public class server extends Thread {
          signal = "OK".getBytes();
          packet = new DatagramPacket(signal, signal.length, addresses[i], cl_ports[i]);
          server.send(packet);
-         System.out.println("Do we even get here");
          // receive nr of bytes
          buffer = new byte[100];
          packet = new DatagramPacket(buffer, buffer.length);
