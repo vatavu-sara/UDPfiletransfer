@@ -1,33 +1,30 @@
 
-import java.util.Random;
-
 public class Launcher {
 
     //Parameters
-    private static int NumberOfClient = 1;
+    private static int NumberOfClient = 10;
     private static int port = 4444;
-    private static String file = "LEAGUE.webm";
-    private static int maxProbFail =20;
-    private static String algo = "goBackN"; //goBackN 
-    private static int windowSize = 8; //windowsize for gobackn
+    private static String file = "crap.pdf";
+    private static int maxProbFail =5;
+    private static int windowSize = 4; //windowsize for gobackn
     
     public static void main(String[] args) {
 
         server s = new server();
-        String[] serverArgs = {Integer.toString(port), Integer.toString(NumberOfClient), file,algo,Integer.toString(windowSize)};
+        String[] serverArgs = {Integer.toString(port), Integer.toString(NumberOfClient), file,Integer.toString(windowSize)};
         s.setArgs(serverArgs);
 
         s.start();
 
 
 
-        Random r = new Random();
+        //Random r = new Random();
 
 
         client[] clients = new client[NumberOfClient];
         for(int i = 0; i < NumberOfClient; i++) {
             clients[i] = new client();
-            String[] tmp = {Integer.toString(port),Integer.toString(NumberOfClient), Integer.toString(i), Integer.toString(r.nextInt(maxProbFail)),Integer.toString(windowSize)};
+            String[] tmp = {Integer.toString(port),Integer.toString(NumberOfClient), Integer.toString(i), Integer.toString(maxProbFail),Integer.toString(windowSize)};
             clients[i].setArgs(tmp);
             clients[i].start();
         }

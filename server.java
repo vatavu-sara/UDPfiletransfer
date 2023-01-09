@@ -57,13 +57,13 @@ public class server extends Thread {
       }
 
       // send to each client (j) all the addresses
-      for (int i = 0; i < noc; i++)
-         for (int j = 0; j < noc; j++) {
-            buffer = new byte[6];
-            buffer = Integer.toString(cl_ports[i]).getBytes();
-            packet = new DatagramPacket(buffer, buffer.length, addresses[j], cl_ports[j]);
-            server.send(packet);
-         }
+      // for (int i = 0; i < noc; i++)
+      //    for (int j = 0; j < noc; j++) {
+      //       buffer = new byte[6];
+      //       buffer = Integer.toString(cl_ports[i]).getBytes();
+      //       packet = new DatagramPacket(buffer, buffer.length, addresses[j], cl_ports[j]);
+      //       server.send(packet);
+      //    }
 
       // sending acknowledge we are connected to all clients(as the filename)
       for (int i = 0; i < noc; i++) {

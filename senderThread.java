@@ -1,7 +1,7 @@
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-
+@SuppressWarnings("unused")
 
 //copy paste of original thread but with modifications
 public class senderThread extends Thread {
@@ -49,8 +49,7 @@ public class senderThread extends Thread {
         //System.out.println("From "+Thread.currentThread()+"Sending to client " + cnb + " at " + addr + ":" + port);
 
         try {
-        //copy past of sara's code :p with a bit of editing
-        //send only once!
+
         
             byte[] buffer2 =  Long.toString(seqNumber).getBytes();
             byte [] sizeBytes= Integer.toString(size).getBytes();

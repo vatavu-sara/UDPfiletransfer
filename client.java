@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Random;
+@SuppressWarnings("unused")
 
 public class client extends Thread {
 	static int MAX_PKT_SZ = 65507; // in bytes
@@ -32,7 +33,7 @@ public class client extends Thread {
 		DatagramSocket client = new DatagramSocket();
 		DatagramPacket packet;
 
-		int[] portsClients = new int[10];
+	
 
 		// send number of process wanted to server
 		byte[] buffer = new byte[10];
@@ -40,13 +41,14 @@ public class client extends Thread {
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
 
+		// int[] portsClients = new int[10];
 		// receive ports of other clients(including himself for ease)
-		for (int i = 0; i < noc; i++) {
-			buffer = new byte[6];
-			packet = new DatagramPacket(buffer, buffer.length);
-			client.receive(packet);
-			portsClients[i] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
-		}
+		// for (int i = 0; i < noc; i++) {
+		// 	buffer = new byte[6];
+		// 	packet = new DatagramPacket(buffer, buffer.length);
+		// 	client.receive(packet);
+		// 	portsClients[i] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+		// }
 
 		buffer = new byte[100];
 		// receive ack that all clients are connected(as the filename)
@@ -84,7 +86,7 @@ public class client extends Thread {
 				client.receive(packet);
 				int packetsReceivedByAll = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
-				int receivedAlready = missingPoint; // how many this client already received
+				//int receivedAlready = missingPoint; // how many this client already received
 
 				// this will be then the new starting point to send again the windowsize as the
 				// window
@@ -106,7 +108,7 @@ public class client extends Thread {
 				// 		+ windowSize);
 				// System.out.println("Client " + noProcess + " receiving packets " + packets + " - "
 				// 		+ (packets + windowSize - missingPoint - 1));
-				long tmpack = ackNumber; // to add
+				//long tmpack = ackNumber; // to add
 
 				// need to know somehow where we actually start
 				// eg if i need only packets 3-5 and ws is 6 i start from 3, not from 0
@@ -126,10 +128,10 @@ public class client extends Thread {
 					// receive seqnr
 					seqNr = getSeq(packet);
 
-					int indexPacket = (int) seqNr / 65507; // supposedly
+					//int indexPacket = (int) seqNr / 65507; // supposedly
 
 					// receive size
-					int size = getSize(packet);
+					//int size = getSize(packet);
 
 					// System.out.println("Client " + noProcess + " attempts to receive packet " + indexPacket + " length"
 					// 		+ packet.getLength());
@@ -157,7 +159,7 @@ public class client extends Thread {
 					} else {
 						// System.out.println(
 						// 		"From client:Packet " + indexPacket + "RECEIVEDdddd for client " + noProcess);
-						tmpack += size; // the tmpack increases :)
+						//tmpack += size; // the tmpack increases :)
 						packetsReceived.add(packet);
 						seqNrs.add(seqNr);
 					}
