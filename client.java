@@ -32,7 +32,6 @@ public class client extends Thread {
 
 		DatagramSocket client = new DatagramSocket();
 		DatagramPacket packet;
-
 	
 
 		// send number of process wanted to server
@@ -49,6 +48,7 @@ public class client extends Thread {
 		// 	client.receive(packet);
 		// 	portsClients[i] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 		// }
+		
 
 		buffer = new byte[100];
 		// receive ack that all clients are connected(as the filename)
@@ -56,7 +56,7 @@ public class client extends Thread {
 		client.receive(packet);
 		System.out.println("Hello there client! All clients are now connected to the server");
 		String newfilepath = dirName + "/" + new String(packet.getData(), 0, packet.getLength()); // path of new file
-		FileOutputStream FOS = new FileOutputStream(newfilepath);
+		OutputStream FOS = new BufferedOutputStream (new FileOutputStream(newfilepath));
 
 		// receive no of packets needed
 		buffer = new byte[10]; // fixed issue by recreating a new buffer for sending the numbers of packets
@@ -180,7 +180,7 @@ public class client extends Thread {
 						}
 
 				// the maximum packets received is the size of them(if all got received
-				// correctly)gb.zip
+				// correctly)
 				int tmppoint = missingPoint; // the index in the window
 				missingPoint += packetsReceived.size(); // maximum missing point is the starting point + nr pcks
 														// received

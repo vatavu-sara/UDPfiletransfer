@@ -79,7 +79,7 @@ public class server extends Thread {
       System.out.println("All client connected\nSending file: " + fileName + " to all (" + noc + ") clients.");
 
       // making file input stream(to read from it)
-      FileInputStream fis = new FileInputStream(new File(fileName));
+      InputStream fis = new BufferedInputStream(new FileInputStream(new File(fileName)));
 
       // max 65507 but 10 are seqnr/acknr
 
@@ -393,7 +393,7 @@ public class server extends Thread {
 
    }
 
-   private byte[] readFile(FileInputStream fis) throws IOException {
+   private byte[] readFile(InputStream fis) throws IOException {
       /*
        * Reads on packet (at most MAX_DATA_SZ bytes) in FIS
        */
