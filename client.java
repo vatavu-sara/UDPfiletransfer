@@ -65,7 +65,7 @@ public class client extends Thread {
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
-		System.out.println("Your file will come in " + packetsNeeded + " packets!");
+		//System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 		// this will be the point in the window from where the client started missing
 		// packets
@@ -284,7 +284,7 @@ public class client extends Thread {
 						packet = new DatagramPacket(buffer, buffer.length);
 						client.receive(packet);
 						msg = new String(packet.getData(), 0, packet.getLength());
-						System.out.println(msg);
+						//System.out.println(msg);
 
 					} while (!msg.equals("OK"));
 
@@ -296,9 +296,6 @@ public class client extends Thread {
 
 					client.close();
 					FOS.close();
-					System.out.println("C" + noProcess
-							+ ":Done transmiting.(" + bytesReceived
-							+ "bytes) Socket closed\nYou may observe the resulting file in " + dirName);
 					break;// breaks out of the while loop as we have finished
 				}
 

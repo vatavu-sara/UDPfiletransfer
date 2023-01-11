@@ -3,6 +3,7 @@
 import java.net.*;
 import java.io.*;
 import java.time.Instant;
+import java.time.*;
 import java.util.ArrayList;
 
 import java.time.Duration;
@@ -10,6 +11,7 @@ import java.time.Duration;
 @SuppressWarnings("unused")
 
 public class server extends Thread {
+   private double timeItTook;
    private String[] args;
    static int MAX_PKT_SZ = 65507; // in bytes
    static int MAX_DATA_SZ = MAX_PKT_SZ - 15; // 10 being the size reserverd for the seq nr and 5 for the size
@@ -24,6 +26,7 @@ public class server extends Thread {
 
       Instant start, finish;
       start = Instant.now();
+      long start2 = System.currentTimeMillis();
       int rcv_port = Integer.parseInt(args[0]);
       DatagramSocket server = new DatagramSocket(rcv_port);
       System.out.println("Server started!");
@@ -110,7 +113,6 @@ public class server extends Thread {
             int restartFromArray[]= new int[noc];
 
            
-            // System.out.println("Go-back-N method chosen! Window size:" + windowSize);
 
             // creating the N packets' data list
             ArrayList<byte[]> packetsList = new ArrayList<byte[]>(windowSize);
@@ -251,8 +253,8 @@ public class server extends Thread {
                   tmpseq = ackNumberExpected.get(ackNumberExpected.size()-1);
                   // we can get rid of the packets that went good
                   for (int i = 0; i < restartFrom; i++) {
-                    System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
-                    //packets++; 
+                    //System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
+                    packets++; 
                     // the seqnr of the server increses
                      seqNumber += sizes.get(0);
                      // we remove the first packet from the list
@@ -300,12 +302,16 @@ public class server extends Thread {
          packet = new DatagramPacket(buffer, buffer.length);
          server.receive(packet);
          bytesReceived[i] = Long.parseLong(new String(packet.getData(), 0, packet.getLength()));
-         System.out.println(bytesReceived[i]);
+         //System.out.println(bytesReceived[i]);
 
       }
 
       server.close();// we don't need it anymore
+      long stop2 = System.currentTimeMillis();
       System.out.println("Sending file completed closing socket.");
+
+
+      timeItTook = ((double)stop2-start2)/1000;
 
       // stats
       int totalPacketSent = 0;
@@ -323,6 +329,7 @@ public class server extends Thread {
       for (long i : bytesReceived) {
          totalByteReceived += i;
       }
+
 
       finish = Instant.now();
       FileOutputStream stream = new FileOutputStream("stats");
@@ -422,5 +429,9 @@ public class server extends Thread {
       }
       formated += Long.toString(n) + prefixes[pref] + "B" + ")";
       return formated;
+   }
+
+   public double getTime() {
+      return timeItTook;
    }
 }
