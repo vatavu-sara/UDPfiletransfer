@@ -3,12 +3,12 @@
 public class Launcher {
 
     //Parameters
-    private static int NumberOfClient = 10;
+    private static int NumberOfClient = 2;
     private static int port = 4444;
-    private static String file = "client.java";
-    private static int maxProbFail =0;
-    private static int windowSize = 3; //windowsize for gobackn
-    private static int repeat = 100;
+    private static String file = "Docker.mp4";
+    private static int maxProbFail =5;
+    private static int windowSize =3; //windowsize for gobackn
+    private static int repeat = 1;
     
     public static void main(String[] args) {
 
@@ -39,24 +39,5 @@ public class Launcher {
             ttime += s.getTime();
         }
         System.out.println("TIME : " + ttime);
-    }
-
-    public static String byteToPrefixByte(long n) {
-        char[] prefixes = {'K', 'M', 'G', 'T'};
-        int pref = -1;
-
-        String formated = "(~";
-
-        while (n > 1000 && pref <= 3) {
-            n = n / 1000;
-    
-            pref++;
-        }
-
-        if (pref == -1) {
-            return "";
-        }
-        formated += Long.toString(n) + prefixes[pref] + "B" + ")";
-        return formated;
     }
 }

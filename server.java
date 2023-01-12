@@ -60,6 +60,7 @@ public class server extends Thread {
       }
 
       // send to each client (j) all the addresses
+
       // for (int i = 0; i < noc; i++)
       //    for (int j = 0; j < noc; j++) {
       //       buffer = new byte[6];
@@ -253,8 +254,8 @@ public class server extends Thread {
                   tmpseq = ackNumberExpected.get(ackNumberExpected.size()-1);
                   // we can get rid of the packets that went good
                   for (int i = 0; i < restartFrom; i++) {
-                    //System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
-                    packets++; 
+                    System.out.println("Packet " + packets++ + " received by everyone and removed from the list!");
+                    //packets++; 
                     // the seqnr of the server increses
                      seqNumber += sizes.get(0);
                      // we remove the first packet from the list
@@ -308,7 +309,7 @@ public class server extends Thread {
 
       server.close();// we don't need it anymore
       long stop2 = System.currentTimeMillis();
-      System.out.println("Sending file completed closing socket.");
+      System.out.println("Sending file completed, closing socket.");
 
 
       timeItTook = ((double)stop2-start2)/1000;

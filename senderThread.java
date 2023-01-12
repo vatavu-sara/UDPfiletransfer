@@ -55,7 +55,8 @@ public class senderThread extends Thread {
             byte [] sizeBytes= Integer.toString(size).getBytes();
             byte[] packetData= new byte[65507];
 
-            //System.out.println("size:"+size);            
+            //System.out.println("size:"+size);  
+                      
             //adding the seq no to the packet data
             for(int i=0;i<buffer2.length;i++)
                 packetData[i]= buffer2[i];

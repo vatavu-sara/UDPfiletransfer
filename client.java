@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Random;
+
 @SuppressWarnings("unused")
 
 public class client extends Thread {
@@ -32,7 +33,6 @@ public class client extends Thread {
 
 		DatagramSocket client = new DatagramSocket();
 		DatagramPacket packet;
-	
 
 		// send number of process wanted to server
 		byte[] buffer = new byte[10];
@@ -40,15 +40,17 @@ public class client extends Thread {
 		packet = new DatagramPacket(buffer, buffer.length, serverName, port);
 		client.send(packet);
 
-		// int[] portsClients = new int[10];
+
 		// receive ports of other clients(including himself for ease)
+
+		// int[] portsClients = new int[10];
 		// for (int i = 0; i < noc; i++) {
-		// 	buffer = new byte[6];
-		// 	packet = new DatagramPacket(buffer, buffer.length);
-		// 	client.receive(packet);
-		// 	portsClients[i] = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
+		// buffer = new byte[6];
+		// packet = new DatagramPacket(buffer, buffer.length);
+		// client.receive(packet);
+		// portsClients[i] = Integer.parseInt(new String(packet.getData(), 0,
+		// packet.getLength()));
 		// }
-		
 
 		buffer = new byte[100];
 		// receive ack that all clients are connected(as the filename)
@@ -56,7 +58,7 @@ public class client extends Thread {
 		client.receive(packet);
 		System.out.println("Hello there client! All clients are now connected to the server");
 		String newfilepath = dirName + "/" + new String(packet.getData(), 0, packet.getLength()); // path of new file
-		OutputStream FOS = new BufferedOutputStream (new FileOutputStream(newfilepath));
+		OutputStream FOS = new BufferedOutputStream(new FileOutputStream(newfilepath));
 
 		// receive no of packets needed
 		buffer = new byte[10]; // fixed issue by recreating a new buffer for sending the numbers of packets
@@ -65,7 +67,7 @@ public class client extends Thread {
 		client.receive(packet);
 		int packetsNeeded = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
-		//System.out.println("Your file will come in " + packetsNeeded + " packets!");
+		// System.out.println("Your file will come in " + packetsNeeded + " packets!");
 
 		// this will be the point in the window from where the client started missing
 		// packets
@@ -86,7 +88,7 @@ public class client extends Thread {
 				client.receive(packet);
 				int packetsReceivedByAll = Integer.parseInt(new String(packet.getData(), 0, packet.getLength()));
 
-				//int receivedAlready = missingPoint; // how many this client already received
+				// int receivedAlready = missingPoint; // how many this client already received
 
 				// this will be then the new starting point to send again the windowsize as the
 				// window
@@ -103,12 +105,15 @@ public class client extends Thread {
 				}
 
 				// System.out.println("All clients received " + packetsReceivedByAll
-				// 		+ " packets from windowsize and client " + noProcess + " received " + receivedAlready
-				// 		+ "so starting from packet " + missingPoint + " in the window (" + packets + ") wsize:"
-				// 		+ windowSize);
-				// System.out.println("Client " + noProcess + " receiving packets " + packets + " - "
-				// 		+ (packets + windowSize - missingPoint - 1));
-				//long tmpack = ackNumber; // to add
+				// + " packets from windowsize and client " + noProcess + " received " +
+				// receivedAlready
+				// + "so starting from packet " + missingPoint + " in the window (" + packets +
+				// ") wsize:"
+				// + windowSize);
+				// System.out.println("Client " + noProcess + " receiving packets " + packets +
+				// " - "
+				// + (packets + windowSize - missingPoint - 1));
+				// long tmpack = ackNumber; // to add
 
 				// need to know somehow where we actually start
 				// eg if i need only packets 3-5 and ws is 6 i start from 3, not from 0
@@ -128,14 +133,16 @@ public class client extends Thread {
 					// receive seqnr
 					seqNr = getSeq(packet);
 
-					//int indexPacket = (int) seqNr / 65507; // supposedly
+					// int indexPacket = (int) seqNr / 65507; // supposedly
 
 					// receive size
-					//int size = getSize(packet);
+					// int size = getSize(packet);
 
-					// System.out.println("Client " + noProcess + " attempts to receive packet " + indexPacket + " length"
-					// 		+ packet.getLength());
-					// System.out.println("[Before addition]Seq : " + seqNr + "Ack: " + tmpack + " size:" + size);
+					// System.out.println("Client " + noProcess + " attempts to receive packet " +
+					// indexPacket + " length"
+					// + packet.getLength());
+					// System.out.println("[Before addition]Seq : " + seqNr + "Ack: " + tmpack + "
+					// size:" + size);
 
 					// simulating a fail if chance <=probFail
 					chance = rand.nextInt(99) + 1; // formula for rng between range "generateRandom(max - min)+min"
@@ -145,7 +152,7 @@ public class client extends Thread {
 					if (chance < probFail || seqNr < minseq || seqNr > maxseq) {
 						// in case of failure (reminder probFail is provided as
 						// argument)
-						//to simulate the timeout (10ms)
+						// to simulate the timeout (10ms)
 						try {
 							sleep(10);
 						} catch (Exception e) {
@@ -153,31 +160,33 @@ public class client extends Thread {
 						}
 
 						// System.out.println(
-						// 		"Packet " + indexPacket + "FAAAAAILEDDDDDDDDDDD for client " + noProcess);
+						// "Packet " + indexPacket + "FAILED for client " + noProcess);
 
 						continue;
 					} else {
 						// System.out.println(
-						// 		"From client:Packet " + indexPacket + "RECEIVEDdddd for client " + noProcess);
-						//tmpack += size; // the tmpack increases :)
+						// "From client:Packet " + indexPacket + "RECEIVEDdddd for client " +
+						// noProcess);
+						// tmpack += size; // the tmpack increases :)
 						packetsReceived.add(packet);
 						seqNrs.add(seqNr);
 					}
 
 				}
-				// sort the list of packets based on seqnr
+				// this would sort the list of packets based on seqnr
+				// in case the transmission would be in parallel
 
-				for (int i = 0; i < packetsReceived.size(); i++)
-					for (int j = i + 1; j < packetsReceived.size(); j++)
-						if (seqNrs.get(i) > seqNrs.get(j)) {// swap size
-							long tempsq = seqNrs.get(i);
-							seqNrs.set(i, seqNrs.get(j));
-							seqNrs.set(j, tempsq);
-							// swap packet itself
-							DatagramPacket tempPck = packetsReceived.get(i);
-							packetsReceived.set(i, packetsReceived.get(j));
-							packetsReceived.set(j, tempPck);
-						}
+				// for (int i = 0; i < packetsReceived.size(); i++)
+				// for (int j = i + 1; j < packetsReceived.size(); j++)
+				// if (seqNrs.get(i) > seqNrs.get(j)) {// swap size
+				// long tempsq = seqNrs.get(i);
+				// seqNrs.set(i, seqNrs.get(j));
+				// seqNrs.set(j, tempsq);
+				// // swap packet itself
+				// DatagramPacket tempPck = packetsReceived.get(i);
+				// packetsReceived.set(i, packetsReceived.get(j));
+				// packetsReceived.set(j, tempPck);
+				// }
 
 				// the maximum packets received is the size of them(if all got received
 				// correctly)
@@ -199,7 +208,8 @@ public class client extends Thread {
 						ackNumber += getSize(packetsReceived.get(i));
 
 						// System.out.println(
-						// 		"From client: Packet no. " + packets + " written by client" + noProcess + "!");
+						// "From client: Packet no. " + packets + " written by client" + noProcess +
+						// "!");
 
 						// send to server the ack number as well as the packet we are receiving this for
 						byte[] seqbytes = new byte[10];
@@ -241,8 +251,9 @@ public class client extends Thread {
 				for (int i = missingPoint; i < windowSize; i++) {
 
 					// System.out.println(
-					// 		"From client: Packet no. " + (packets + i - missingPoint) + " failed by client" + noProcess
-					// 				+ "!");
+					// "From client: Packet no. " + (packets + i - missingPoint) + " failed by
+					// client" + noProcess
+					// + "!");
 
 					// send to server the ack number as well as the packet we are receiving this for
 					byte[] seqbytes = new byte[10];
@@ -284,7 +295,7 @@ public class client extends Thread {
 						packet = new DatagramPacket(buffer, buffer.length);
 						client.receive(packet);
 						msg = new String(packet.getData(), 0, packet.getLength());
-						//System.out.println(msg);
+						// System.out.println(msg);
 
 					} while (!msg.equals("OK"));
 
