@@ -23,7 +23,9 @@ public class client extends Thread {
 		int noProcess = Integer.parseInt(args[2]); // its index
 		String dirName = "clients/client" + noProcess; // create directory client1..
 		new File("clients").mkdir(); // create directory "clients" if not existent
-		new File(dirName).mkdir();
+		//temporary
+		//new File(dirName).mkdir();
+
 
 		int probFail = Integer.parseInt(args[3]); // probability % of simulating fail
 		int windowSize = Integer.parseInt(args[4]);
@@ -57,7 +59,8 @@ public class client extends Thread {
 		packet = new DatagramPacket(buffer, buffer.length);
 		client.receive(packet);
 		System.out.println("Hello there client! All clients are now connected to the server");
-		String newfilepath = dirName + "/" + new String(packet.getData(), 0, packet.getLength()); // path of new file
+		//changed / to _ so all stay in 1 folder
+		String newfilepath = dirName + "_" + new String(packet.getData(), 0, packet.getLength()); // path of new file
 		OutputStream FOS = new BufferedOutputStream(new FileOutputStream(newfilepath));
 
 		// receive no of packets needed

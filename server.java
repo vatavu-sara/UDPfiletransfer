@@ -405,9 +405,10 @@ public class server extends Thread {
          data[size] = (byte) fis.read();
          size++;
       }
-      if (size != MAX_DATA_SZ) {
-         size--;
-      }
+
+      // if (size != MAX_DATA_SZ) {
+      //    size--;
+      // }
 
       return data;
 
